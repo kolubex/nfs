@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <unistd.h> // close()
 
 #define MAX_BUFFER_SIZE 65535
 
@@ -76,7 +77,7 @@ struct recv_msg_t recv_message_client(int sock_fd)
         if (size > 0)
         {
             // New data. Copy into message string.
-            char *new_message = realloc(msg.message, strlen(msg.message) + size + 1);
+            char *new_message = (char *)realloc(msg.message, strlen(msg.message) + size + 1);
             if (new_message == NULL)
             {
                 perror("Memory allocation error");
@@ -167,7 +168,7 @@ struct recv_msg_t recv_message_server(int sock_fd)
         if (size > 0)
         {
             // New data. Copy into message string.
-            char *new_message = realloc(msg.message, strlen(msg.message) + size + 1);
+            char *new_message = (char *)realloc(msg.message, strlen(msg.message) + size + 1);
             if (new_message == NULL)
             {
                 perror("Memory allocation error");

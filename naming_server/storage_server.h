@@ -3,7 +3,7 @@
 
 // define macro MAX_FILES
 #define MAX_FILES 100000
-#define MAX_FOLDERS 100000
+#define MAX_DIRECTORIES 100000
 #define MAX_STORAGE_CAPACITY 1000000000
 struct storage_server
 {
@@ -13,7 +13,7 @@ struct storage_server
     int num_of_files;
     int num_of_folders;
     char* files[MAX_FILES];
-    char* folders[MAX_FOLDERS];
+    char* folders[MAX_DIRECTORIES];
     // int max_storage_capcicity = MAX_STORAGE_CAPACITY;
     int max_storage_capacity; // to be equated to MAX_STORAGE_CAPACITY in init_storage_server
     int current_storage_capacity;
