@@ -5,8 +5,8 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "structures.h"
-#include "helper.h"
+#include "../common/structures.h"
+#include "../common/helper.h"
 
 #define BACKLOG 10 // Maximum length of the queue of pending connections
 

@@ -13,10 +13,8 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-
-#include "helper.h"
-
-#include "structures.h"
+#include "../common/structures.h"
+#include "../common/helper.h"
 
 // Forward declare functions
 // void validate_before_new_entry(char* dir, char* name);

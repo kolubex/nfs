@@ -4,7 +4,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "structures.h"
+#include "../common/structures.h"
+#include "../common/helper.h"
 #include "functionalities.h"
 #include <arpa/inet.h>
 
@@ -50,12 +51,6 @@ struct Command
     char data[256]; // Fixed-size buffer for data
 };
 
-// Assuming recv_msg_t is defined as follows
-struct recv_msg_t
-{
-    char *message;
-    int quit;
-};
 
 void init_storage_server(struct storage_server *server, int port, int ss_id)
 {

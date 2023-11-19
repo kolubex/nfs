@@ -7,7 +7,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
-#include "helper.h"
+#include "../common/structures.h"
+#include "../common/helper.h"
 
 #define MAX_NAME_LENGTH 100
 

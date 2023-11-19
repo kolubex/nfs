@@ -4,8 +4,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "structures.h"
-#include "helper.h"
+#include "../common/structures.h"
+#include "../common/helper.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 
