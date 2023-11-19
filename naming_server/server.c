@@ -28,6 +28,7 @@ extern void fs_mount(struct nfs_network *fs);
 enum CommandType
 {
     mkdir_cmd,
+    mkfile_cmd,
     ls_cmd,
     cd_cmd,
     home_cmd,
@@ -55,7 +56,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
 {
     // Iterate over the file mappings to find the storage server for the given file
     int storage_server_index = -1;
-    if (command->type != mkdir_cmd)
+    if (command->type != mkdir_cmd && command->type != mkfile_cmd)
     {
 
         for (int i = 0; i < MAX_FILES; i++)
@@ -107,11 +108,14 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         int storage_server_socket = get_socket(ip_address, ssid_port_number);
         send_message(&storage_server_socket, message);
         printf("Sent message from the SS to the NS");
+        // receive the message from the storage server
+        struct recv_msg_t msg = recv_message_server(&storage_server_socket);
+        send_message(socket_fd, msg.message);
         close(storage_server_socket);
     }
 
 
-    if (command->type == cat_cmd || command->type == write_cmd || command->type == stat_cmd || command->type == mkdir_cmd)
+    if (command->type == cat_cmd || command->type == write_cmd || command->type == stat_cmd)
     {
         printf("Entered if statement, now send data\n");
         uint32_t storage_server_ip_address = fs->storage_servers[storage_server_index].ip_of_ss;
@@ -348,6 +352,10 @@ struct Command parse_command(const char *message)
     {
         cmd.type = mkdir_cmd;
     }
+    else if (strcmp(name, "mkfile") == 0)
+    {
+        cmd.type = mkfile_cmd;
+    }
     else if (strcmp(name, "ls") == 0)
     {
         cmd.type = ls_cmd;
@@ -421,7 +429,7 @@ struct Command parse_command(const char *message)
             cmd.data[255] = '\0';
         }
     }
-    else if (type == mkdir_cmd || type == cd_cmd || type == rmdir_cmd || type == create_cmd || type == cat_cmd || type == rm_cmd || type == stat_cmd)
+    else if (type == mkdir_cmd || type == mkfile_cmd || type == cd_cmd || type == rmdir_cmd || type == create_cmd || type == cat_cmd || type == rm_cmd || type == stat_cmd)
     {
         if (tokens != 2)
         {

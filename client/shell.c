@@ -70,8 +70,9 @@ void parse_response_to_get_ss(char *response, char *formatted_message)
         return;
     }
     freeaddrinfo(res);
-    printf("Sending message: %s", formatted_message);
+    printf("Sending message in ss: %s", formatted_message);
     send_message(&ss_sock, formatted_message);
+    printf("Waiting for response\n");
     struct recv_msg_t msg = recv_message_client(ss_sock);
     if (msg.quit)
     {
@@ -79,16 +80,21 @@ void parse_response_to_get_ss(char *response, char *formatted_message)
         exit(EXIT_SUCCESS);
     }
     char *response2 = msg.message;
+    printf("Received message: %s\n", response2);
     // Parse response (remove the protocol header)
     // The code, length, and body are separated by "\r\n"
     char *code, *length, *body;
-    size_t lenPos = strcspn(response, "\r\n");
-    code = strndup(response, lenPos);
-    size_t bodyPos = strcspn(response + lenPos + 2, "\r\n") + lenPos + 2;
-    length = strndup(response + lenPos + 2, bodyPos - (lenPos + 2));
-    body = strdup(response + bodyPos + 4); // There should be two sets of "\r\n"
-
+    size_t lenPos = strcspn(response2, "\r\n");
+    code = strndup(response2, lenPos);
+    size_t bodyPos = strcspn(response2 + lenPos + 2, "\r\n") + lenPos + 2;
+    length = strndup(response2 + lenPos + 2, bodyPos - (lenPos + 2));
+    body = strdup(response2 + bodyPos + 4); // There should be two sets of "\r\n"
     char *output = body;
+    if (strlen(body) == 0 && (strcmp(code, "200 OK") != 0))
+    {
+        output = code;
+    }
+    printf("%s\n", output);
 
     // if write command then print the output as success else print the output as it is
 }
@@ -206,6 +212,30 @@ void mkdir_rpc(struct Shell *shell, char *dname)
 
     // Construct the command
     snprintf(cmd, cmd_length + 1, "mkdir %s%s", dname, endline);
+
+    // Call the network_command function
+    network_command(shell, cmd, 0, 0);
+
+    // Free the allocated memory
+    free(cmd);
+}
+
+void mkfile_rpc(struct Shell *shell, char *dname)
+{
+    // Calculate the length needed for the command
+    int cmd_length = snprintf(NULL, 0, "mkfile %s%s", dname, endline);
+
+    // Allocate memory for the command
+    char *cmd = malloc(cmd_length + 1); // +1 for the null terminator
+
+    if (cmd == NULL)
+    {
+        perror("Memory allocation error");
+        return;
+    }
+
+    // Construct the command
+    snprintf(cmd, cmd_length + 1, "mkfile %s%s", dname, endline);
 
     // Call the network_command function
     network_command(shell, cmd, 0, 0);
@@ -365,6 +395,13 @@ int execute_command(struct Shell *shell, char *command_str)
         printf("Found mkdir\n");
         mkdir_rpc(shell, command.file_name);
     }
+    else if(strcmp(command.name, "mkfile") == 0)
+    {
+        printf("Found mkfile hello\n");
+        mkfile_rpc(shell, command.file_name);
+    }
+
+
     else if (strcmp(command.name, "cd") == 0)
     {
         cd_rpc(shell, command.file_name);
@@ -477,7 +514,7 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
     }
     else
     {
-        printf("%s\n", output);
+        printf("rodd gaa%s\n", output);
     }
 
     // Free allocated memory
@@ -513,6 +550,7 @@ struct Command parse_command(char *command_str)
         }
     }
     else if (strcmp(command.name, "mkdir") == 0 ||
+             strcmp(command.name, "mkfile") == 0 ||
              strcmp(command.name, "cd") == 0 ||
              strcmp(command.name, "rmdir") == 0 ||
              strcmp(command.name, "create") == 0 ||

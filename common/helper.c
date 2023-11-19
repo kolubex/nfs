@@ -60,6 +60,7 @@ void send_message(int *sock_fd, char *msg)
         msg_ptr += bytes_sent;
         msg_size -= bytes_sent;
     }
+    printf("Message sent\n");
 }
 
 

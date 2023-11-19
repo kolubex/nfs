@@ -39,6 +39,8 @@ struct Command parse_command(char *command_str);
 
 void mkdir_rpc(struct Shell *shell, char *dname);
 
+void mkfile_rpc(struct Shell *shell, char *fname);
+
 void cd_rpc(struct Shell *shell, char *dname);
 
 void home_rpc(struct Shell *shell);

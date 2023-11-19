@@ -83,3 +83,17 @@ void fs_mkdir(int *socket_fd, const char *dir_name) {
     char *success_message = "Directory created successfully";
     response_ok(success_message, socket_fd);
 }
+
+void fs_mkfile(int *socket_fd, const char *file_name) {
+    printf("fs_mkfile\n");
+    FILE *file = fopen(file_name, "w"); // Open the file for writing
+    if (file == NULL) {
+        char *error_message = "Error: Unable to create file";
+        send_message(socket_fd, error_message);
+        return;
+    }
+
+    fclose(file); // Close the file after creating it
+    char *success_message = "File created successfully";
+    response_ok(success_message, socket_fd);
+}

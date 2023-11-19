@@ -29,6 +29,7 @@ struct recv_msg_t recv_message_server(int *sock_fd);
 enum CommandType
 {
     mkdir_cmd,
+    mkfile_cmd,
     ls_cmd,
     cd_cmd,
     home_cmd,
@@ -226,6 +227,10 @@ void exec_command(int *socket_fd, struct Command command)
         printf("command.file: %s\n", command.file);
         fs_mkdir(socket_fd, command.file);
         break;
+    case mkfile_cmd:
+        printf("command.file: %s\n", command.file);
+        fs_mkfile(socket_fd, command.file);
+        break;  
     case ls_cmd:
         // fs_ls();
         break;
@@ -290,6 +295,10 @@ struct Command parse_command(const char *message)
     if (strcmp(name, "mkdir") == 0)
     {
         cmd.type = mkdir_cmd;
+    }
+    else if(strcmp(name, "mkfile") == 0)
+    {
+        cmd.type = mkfile_cmd;
     }
     else if (strcmp(name, "ls") == 0)
     {
@@ -362,7 +371,7 @@ struct Command parse_command(const char *message)
             cmd.data[255] = '\0';
         }
     }
-    else if (type == mkdir_cmd || type == cd_cmd || type == rmdir_cmd || type == create_cmd || type == cat_cmd || type == rm_cmd || type == stat_cmd)
+    else if (type == mkdir_cmd || type == mkfile_cmd || type == cd_cmd || type == rmdir_cmd || type == create_cmd || type == cat_cmd || type == rm_cmd || type == stat_cmd)
     {
         if (tokens != 2)
         {
