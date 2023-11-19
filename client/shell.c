@@ -362,6 +362,7 @@ int execute_command(struct Shell *shell, char *command_str)
     }
     else if (strcmp(command.name, "mkdir") == 0)
     {
+        printf("Found mkdir\n");
         mkdir_rpc(shell, command.file_name);
     }
     else if (strcmp(command.name, "cd") == 0)

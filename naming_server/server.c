@@ -51,29 +51,66 @@ struct Command
     char data[256]; // Fixed-size buffer for data
 };
 
-void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, struct Command* command, char *message)
+void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message)
 {
     // Iterate over the file mappings to find the storage server for the given file
     int storage_server_index = -1;
-    for (int i = 0; i < MAX_FILES; i++)
+    if (command->type != mkdir_cmd)
     {
-        // printf("Comparing file name: %s\n", fs->file_mappings[i].file_name);
-        if (strcmp(fs->file_mappings[i].file_name, command->file) == 0)
+
+        for (int i = 0; i < MAX_FILES; i++)
         {
-            storage_server_index = fs->file_mappings[i].storage_server_index;
-            break;
+            // printf("Comparing file name: %s\n", fs->file_mappings[i].file_name);
+            if (strcmp(fs->file_mappings[i].file_name, command->file) == 0)
+            {
+                storage_server_index = fs->file_mappings[i].storage_server_index;
+                break;
+            }
         }
-    }
 
-    if (storage_server_index == -1)
+        if (storage_server_index == -1)
+        {
+            printf("File not found in any storage server.\n");
+            return;
+        }
+
+        // Get the socket for the found storage server
+        printf("Found storage server index: %d\n", storage_server_index);
+        printf("command->type: %d\n", command->type);
+    }
+    else
     {
-        printf("File not found in any storage server.\n");
-        return;
+        printf("We are NOT entering search\n");
+        int ssid;
+        int curr_storage = 1e9;
+        for (int i = 0; i < MAX_STORAGE_SERVERS; i++)
+        {
+            if (fs->storage_servers[i].working)
+            {
+                if (curr_storage > fs->storage_servers[i].current_storage_capacity)
+                {
+                    curr_storage = fs->storage_servers[i].current_storage_capacity;
+                    ssid = i;
+                }
+            }
+        }
+
+        uint32_t ssid_port_number = fs->storage_servers[ssid].port_of_ss;
+        uint32_t ssid_ip_address = fs->storage_servers[ssid].ip_of_ss;
+
+        char* ip_address = "127.0.0.1";
+        printf("ssid_port_number to which NS is connecting: %d\n", ssid_port_number);
+        printf("ssid_ip_address to which NS is connecting: %d\n", ssid_ip_address);
+
+        // create a socket and connect the client with the storage server
+
+        int storage_server_socket = get_socket(ip_address, ssid_port_number);
+        send_message(&storage_server_socket, message);
+        printf("Sent message from the SS to the NS");
+        close(storage_server_socket);
     }
 
-    // Get the socket for the found storage server
-    printf("Found storage server index: %d\n", storage_server_index);
-    printf("command->type: %d\n", command->type);
+
     if (command->type == cat_cmd || command->type == write_cmd || command->type == stat_cmd || command->type == mkdir_cmd)
     {
         printf("Entered if statement, now send data\n");
@@ -112,51 +149,51 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
     }
 }
 
-void* client_thread(void* client_sock){
-    int* new_sockfd = (int*)client_sock;
+void *client_thread(void *client_sock)
+{
+    int *new_sockfd = (int *)client_sock;
     if (*new_sockfd < 0)
+    {
+        perror("Error: Failed to accept socket connection");
+    }
+    printf("Accepted connection from client\n");
+    struct recv_msg_t msg;
+    msg.quit = 0;
+    while (1)
+    {
+        printf("Created message struct\n");
+        msg = recv_message_server(new_sockfd);
+        printf("Received message from client: %s\n", msg.message);
+        if (msg.quit)
         {
-            perror("Error: Failed to accept socket connection");
+            printf("Client has quit\n");
+            break;
         }
-        printf("Accepted connection from client\n");
-        struct recv_msg_t msg;
-        msg.quit = 0;
-        while (1)
+        struct Command command = parse_command(msg.message);
+        printf("Parsed command\n");
+        if (command.type == invalid_cmd)
         {
-            printf("Created message struct\n");
-            msg = recv_message_server(new_sockfd);
-            printf("Received message from client: %s\n", msg.message);
-            if (msg.quit)
-            {
-                printf("Client has quit\n");
-                break;
-            }
-            struct Command command = parse_command(msg.message);
-            printf("Parsed command\n");
-            if (command.type == invalid_cmd)
-            {
-                printf("Invalid command\n");
-                char *response = format_response(command.data, command.data);
-                send_message(new_sockfd, response);
-                free(response);
-            }
-            else if (command.type == noop_cmd)
-            {
-                printf("Noop command\n");
-                char *response = format_response("200 OK", "");
-                send_message(new_sockfd, response);
-                free(response);
-            }
-            else
-            {
-                // exec_command(*new_sockfd, &fs, command);
-                printf("Searching for file in storage servers\n");
-                search_and_send_to_storage_server(new_sockfd, &fs, &command, msg.message);
-            }
+            printf("Invalid command\n");
+            char *response = format_response(command.data, command.data);
+            send_message(new_sockfd, response);
+            free(response);
         }
+        else if (command.type == noop_cmd)
+        {
+            printf("Noop command\n");
+            char *response = format_response("200 OK", "");
+            send_message(new_sockfd, response);
+            free(response);
+        }
+        else
+        {
+            printf("Searching for file in storage servers\n");
+            search_and_send_to_storage_server(new_sockfd, &fs, &command, msg.message);
+        }
+    }
 
-        close(*new_sockfd);
-        // fs_unmount(&fs);
+    close(*new_sockfd);
+    // fs_unmount(&fs);
 }
 
 int main(int argc, char *argv[])
@@ -202,12 +239,11 @@ int main(int argc, char *argv[])
         socklen_t client_len;
         int new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
         pthread_t cli_thread;
-        if (pthread_create(&cli_thread, NULL, client_thread, (void*) &new_sockfd) < 0)
+        if (pthread_create(&cli_thread, NULL, client_thread, (void *)&new_sockfd) < 0)
         {
             perror("Error: Failed to create thread");
             continue;
         }
-
     }
 
     close(sockfd);

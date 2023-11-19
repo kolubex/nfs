@@ -7,6 +7,8 @@
 #include <netdb.h>
 #include <unistd.h> // close()
 #include "helper.h"
+#include <arpa/inet.h>
+
 
 #define MAX_BUFFER_SIZE 65535
 
@@ -211,4 +213,36 @@ struct recv_msg_t recv_message_server(int* sock_fd) {
     }
     printf("msg.message: %s\n", msg.message);
     return msg;
+}
+
+int get_socket(char *ip, int port_num)
+{
+    int storage_server_socket = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
+    if (storage_server_socket < 0)
+    {
+        perror("Error: Failed to create socket");
+        exit(1);
+    }
+
+    struct sockaddr_in storage_server_addr;
+    char *ip_address = "127.0.0.1";
+
+    // Initialize storage_server_addr with zeros
+    memset(&storage_server_addr, 0, sizeof(storage_server_addr));
+
+    storage_server_addr.sin_family = AF_INET;
+    storage_server_addr.sin_port = htons(port_num);
+
+    // Convert IP address string to binary form
+    if (inet_pton(AF_INET, ip_address, &storage_server_addr.sin_addr) <= 0)
+    {
+        perror("inet_pton");
+        exit(1);
+    }
+    if (connect(storage_server_socket, (struct sockaddr *)&storage_server_addr, sizeof(storage_server_addr)) < 0)
+    {
+        perror("Error: Failed to connect to storage server");
+        exit(1);
+    }
+    return storage_server_socket;
 }
