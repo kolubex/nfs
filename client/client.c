@@ -5,19 +5,6 @@
 
 #define MAX_NAME_LENGTH 100
 
-struct Command
-{
-    char name[MAX_NAME_LENGTH];
-    char file_name[MAX_NAME_LENGTH];
-    char append_data[MAX_NAME_LENGTH];
-};
-
-struct Shell
-{
-    int cs_sock;
-    int is_mounted;
-};
-
 
 int main(int argc, char **argv)
 {

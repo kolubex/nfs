@@ -15,7 +15,7 @@ struct Command
 {
   char name[MAX_NAME_LENGTH];
   char file_name[MAX_NAME_LENGTH];
-  char append_data[MAX_NAME_LENGTH];
+  char write_data[MAX_NAME_LENGTH];
 };
 
 struct Shell
@@ -48,7 +48,7 @@ void ls_rpc(struct Shell *shell);
 
 void create_rpc(struct Shell *shell, char *fname);
 
-void append_rpc(struct Shell *shell, char *fname, char *data);
+void write_rpc(struct Shell *shell, char *fname, char *data);
 
 void cat_rpc(struct Shell *shell, char *fname);
 
@@ -58,7 +58,7 @@ void rm_rpc(struct Shell *shell, char *fname);
 
 void stat_rpc(struct Shell *shell, char *fname);
 
-void network_command(struct Shell *shell, const char *message, int can_be_empty);
+void network_command(struct Shell *shell, const char *message, int can_be_empty, int receives_ss_ip);
 
 
 #endif

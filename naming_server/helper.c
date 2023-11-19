@@ -1,6 +1,3 @@
-#ifndef FILESYS_H
-#define FILESYS_H
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h> // close()
+#include "helper.h"
 
 #define MAX_BUFFER_SIZE 65535
 
@@ -56,11 +54,6 @@ void send_message(int sock_fd, const char *message)
     }
 }
 
-struct recv_msg_t
-{
-    char *message; // Assuming maximum message size
-    int quit;
-};
 
 struct recv_msg_t recv_message_client(int sock_fd)
 {
@@ -153,65 +146,57 @@ struct recv_msg_t recv_message_client(int sock_fd)
     return msg;
 }
 
-struct recv_msg_t recv_message_server(int sock_fd)
-{
+struct recv_msg_t recv_message_server(int sock_fd) {
+    printf("recv_message_server\n");
     struct recv_msg_t msg;
     msg.quit = 0;
     msg.message = NULL;
+    size_t current_length = 0;
 
     char temp_buff[65535];
     ssize_t size;
-
-    while (1)
-    {
+    printf("Entering while loop\n");
+    while (1) {
+        printf("recv_message_server while\n");
         size = recv(sock_fd, temp_buff, sizeof(temp_buff), 0);
-        if (size > 0)
-        {
-            // New data. Copy into message string.
-            char *new_message = (char *)realloc(msg.message, strlen(msg.message) + size + 1);
-            if (new_message == NULL)
-            {
+        printf("size: %ld\n", size);
+        printf("temp_buff: %s\n", temp_buff);
+        if (size > 0) {
+            char *new_message = realloc(msg.message, current_length + size + 1);
+            if (new_message == NULL) {
                 perror("Memory allocation error");
                 free(msg.message);
                 msg.message = NULL;
                 msg.quit = 1;
                 return msg;
             }
-
             msg.message = new_message;
-            memcpy(msg.message + strlen(msg.message), temp_buff, size);
-            msg.message[strlen(msg.message) + size] = '\0'; // Null-terminate
+            memcpy(msg.message + current_length, temp_buff, size);
+            current_length += size;
+            msg.message[current_length] = '\0'; // Null-terminate
+            printf("msg.message: %s\n", msg.message);
 
-            // Start by identifying the length of the message body
-            char *endPos = strstr(msg.message, "\r\n");
-            if (endPos == NULL)
-            {
-                // Still missing the full message
-                continue;
+            // Check for end of message
+            if (strstr(msg.message, "\r\n") != NULL) {
+                break;
             }
-
-            // We've got the full message
-            break;
-        }
-        else if (size == 0)
-        {
-            // The socket has closed on the other end
+        } else if (size == 0) {
+            // Socket closed
             msg.quit = 1;
             break;
-        }
-        else
-        {
-            // An error has occurred (size < 0)
+        } else {
+            // Receive error
             perror("Error while receiving message from socket");
             free(msg.message);
             msg.message = NULL;
             close(sock_fd);
+            msg.quit = 1;
             return msg;
         }
+        // print the message
+        
     }
-
+    printf("msg.message: %s\n", msg.message);
     return msg;
 }
 
-
-#endif
