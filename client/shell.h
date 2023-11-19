@@ -29,7 +29,7 @@ void mountNFS(struct Shell *shell, char *fs_loc);
 
 void unmountNFS(struct Shell *shell);
 
-void run(struct Shell *shell);
+void run(struct Shell *shell, char *port);
 
 void run_script(struct Shell *shell, char *file_name);
 

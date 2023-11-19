@@ -20,14 +20,14 @@ const char *endline = "\r\n";
 
 #define MAX_COMMAND_LENGTH 100
 
-void parse_response_to_get_ss(char* response, char* formatted_message)
+void parse_response_to_get_ss(char *response, char *formatted_message)
 {
     // message is in format "ss_ip ss_port"
     // you have to send the send the same formatted message to the socket created with given info
     // print response
     printf("Received message: %s\n", response);
-    char* ss_ip = strtok(response, " ");
-    char* ss_port = strtok(NULL, " ");
+    char *ss_ip = strtok(response, " ");
+    char *ss_port = strtok(NULL, " ");
     ss_ip = "localhost";
     ss_port = "50000";
     if (ss_ip == NULL || ss_port == NULL)
@@ -71,7 +71,7 @@ void parse_response_to_get_ss(char* response, char* formatted_message)
     }
     freeaddrinfo(res);
     printf("Sending message: %s", formatted_message);
-    send_message(ss_sock, formatted_message);
+    send_message(&ss_sock, formatted_message);
     struct recv_msg_t msg = recv_message_client(ss_sock);
     if (msg.quit)
     {
@@ -91,8 +91,6 @@ void parse_response_to_get_ss(char* response, char* formatted_message)
     char *output = body;
 
     // if write command then print the output as success else print the output as it is
-
-
 }
 void mountNFS(struct Shell *shell, char *fs_loc)
 {
@@ -103,22 +101,27 @@ void mountNFS(struct Shell *shell, char *fs_loc)
 
     // Parse fs_loc string
     int i = 0;
-    while (fs_loc[i] != ':' && fs_loc[i] != '\0') {
+    while (fs_loc[i] != ':' && fs_loc[i] != '\0')
+    {
         hostname[i] = fs_loc[i];
         i++;
     }
     hostname[i] = '\0';
 
-    if (fs_loc[i] == ':') {
+    if (fs_loc[i] == ':')
+    {
         i++;
         int j = 0;
-        while (fs_loc[i] != '\0') {
+        while (fs_loc[i] != '\0')
+        {
             port[j] = fs_loc[i];
             i++;
             j++;
         }
         port[j] = '\0';
-    } else {
+    }
+    else
+    {
         fprintf(stderr, "Error: Invalid file system location\n");
         return;
     }
@@ -136,16 +139,18 @@ void mountNFS(struct Shell *shell, char *fs_loc)
     printf("Getting address info\n");
     printf("hostname: %s, port: %s\n", hostname, port);
     int ret;
-    if ((ret = getaddrinfo(hostname, port, &hints, &addr)) != 0) {
+    if ((ret = getaddrinfo(hostname, port, &hints, &addr)) != 0)
+    {
         fprintf(stderr, "Error: Could not obtain address information for \"%s:%s\"\n", hostname, port);
         fprintf(stderr, "\tgetaddrinfo returned with %d\n", ret);
         return;
     }
 
     // Create socket to connect
-    
+
     shell->cs_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (shell->cs_sock < 0) {
+    if (shell->cs_sock < 0)
+    {
         fprintf(stderr, "Error: Failed to create a socket\n");
         fprintf(stderr, "\tsocket returned with %d\n", shell->cs_sock);
         freeaddrinfo(addr);
@@ -153,7 +158,8 @@ void mountNFS(struct Shell *shell, char *fs_loc)
     }
 
     // Connect to server
-    if (connect(shell->cs_sock, addr->ai_addr, addr->ai_addrlen) < 0) {
+    if (connect(shell->cs_sock, addr->ai_addr, addr->ai_addrlen) < 0)
+    {
         fprintf(stderr, "Error: Failed to connect with server (%s:%s).\n", hostname, port);
         fprintf(stderr, "\tDouble check that the server is running.\n");
         close(shell->cs_sock);
@@ -184,14 +190,16 @@ void unmountNFS(struct Shell *shell)
     }
 }
 
-void mkdir_rpc(struct Shell *shell, char *dname) {
+void mkdir_rpc(struct Shell *shell, char *dname)
+{
     // Calculate the length needed for the command
     int cmd_length = snprintf(NULL, 0, "mkdir %s%s", dname, endline);
-    
-    // Allocate memory for the command
-    char *cmd = malloc(cmd_length + 1);  // +1 for the null terminator
 
-    if (cmd == NULL) {
+    // Allocate memory for the command
+    char *cmd = malloc(cmd_length + 1); // +1 for the null terminator
+
+    if (cmd == NULL)
+    {
         perror("Memory allocation error");
         return;
     }
@@ -205,7 +213,6 @@ void mkdir_rpc(struct Shell *shell, char *dname) {
     // Free the allocated memory
     free(cmd);
 }
-
 
 void cd_rpc(struct Shell *shell, char *dname)
 {
@@ -235,7 +242,7 @@ void ls_rpc(struct Shell *shell)
     network_command(shell, cmd, 0, 0);
 }
 
-void create_rpc(struct Shell *shell, char *fname )
+void create_rpc(struct Shell *shell, char *fname)
 {
     char cmd[MAX_NAME_LENGTH + 12]; // command + "create " + endline
     snprintf(cmd, sizeof(cmd), "create %s%s", fname, endline);
@@ -277,21 +284,25 @@ void stat_rpc(struct Shell *shell, char *fname)
     network_command(shell, cmd, 1, 1);
 }
 
-void run(struct Shell *shell)
+void run(struct Shell *shell, char *port)
 {
-    if (!shell->is_mounted) {
-        printf("File system is not mounted. Exiting.\n");
-        return;
-    }
-
     // Continue until the user quits
     int user_quit = 0;
-    while (!user_quit) {
+    while (!user_quit)
+    {
+        mountNFS(shell, port);
+        if (!shell->is_mounted)
+        {
+            printf("File system is not mounted. Exiting.\n");
+            return;
+        }
+
         // Print prompt and get command line
         char command_str[MAX_COMMAND_LENGTH];
         printf("%s", PROMPT_STRING);
 
-        if (fgets(command_str, sizeof(command_str), stdin) == NULL) {
+        if (fgets(command_str, sizeof(command_str), stdin) == NULL)
+        {
             fprintf(stderr, "Error reading input.\n");
             break;
         }
@@ -301,22 +312,23 @@ void run(struct Shell *shell)
 
         // Execute the command
         user_quit = execute_command(shell, command_str);
+        // Unmount the file system
+        unmountNFS(shell);
     }
-
-    // Unmount the file system
-    unmountNFS(shell);
 }
 
 void run_script(struct Shell *shell, char *file_name)
 {
-   if (!shell->is_mounted) {
+    if (!shell->is_mounted)
+    {
         printf("File system is not mounted. Exiting.\n");
         return;
     }
 
     // Open script file
     FILE *infile = fopen(file_name, "r");
-    if (!infile) {
+    if (!infile)
+    {
         fprintf(stderr, "Could not open script file: %s\n", file_name);
         return;
     }
@@ -325,7 +337,8 @@ void run_script(struct Shell *shell, char *file_name)
     int user_quit = 0;
     char command_str[MAX_COMMAND_LENGTH];
 
-    while (fgets(command_str, sizeof(command_str), infile) != NULL && !user_quit) {
+    while (fgets(command_str, sizeof(command_str), infile) != NULL && !user_quit)
+    {
         // Remove newline character from the end of the input
         command_str[strcspn(command_str, "\n")] = '\0';
 
@@ -343,46 +356,73 @@ int execute_command(struct Shell *shell, char *command_str)
     struct Command command = parse_command(command_str);
 
     // look for the matching command
-    if (strcmp(command.name, "") == 0) {
+    if (strcmp(command.name, "") == 0)
+    {
         return 0;
-    } else if (strcmp(command.name, "mkdir") == 0) {
+    }
+    else if (strcmp(command.name, "mkdir") == 0)
+    {
         mkdir_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "cd") == 0) {
+    }
+    else if (strcmp(command.name, "cd") == 0)
+    {
         cd_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "home") == 0) {
+    }
+    else if (strcmp(command.name, "home") == 0)
+    {
         home_rpc(shell);
-    } else if (strcmp(command.name, "rmdir") == 0) {
+    }
+    else if (strcmp(command.name, "rmdir") == 0)
+    {
         rmdir_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "ls") == 0) {
+    }
+    else if (strcmp(command.name, "ls") == 0)
+    {
         ls_rpc(shell);
-    } else if (strcmp(command.name, "create") == 0) {
+    }
+    else if (strcmp(command.name, "create") == 0)
+    {
         create_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "write") == 0) {
+    }
+    else if (strcmp(command.name, "write") == 0)
+    {
         write_rpc(shell, command.file_name, command.write_data);
-    } else if (strcmp(command.name, "cat") == 0) {
+    }
+    else if (strcmp(command.name, "cat") == 0)
+    {
         cat_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "head") == 0) {
+    }
+    else if (strcmp(command.name, "head") == 0)
+    {
         errno = 0;
         unsigned long n = strtoul(command.write_data, NULL, 0);
-        if (errno == 0) {
+        if (errno == 0)
+        {
             head_rpc(shell, command.file_name, n);
-        } else {
+        }
+        else
+        {
             fprintf(stderr, "Invalid command line: %s is not a valid number of bytes\n", command.write_data);
             return 0;
         }
-    } else if (strcmp(command.name, "rm") == 0) {
+    }
+    else if (strcmp(command.name, "rm") == 0)
+    {
         rm_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "stat") == 0) {
+    }
+    else if (strcmp(command.name, "stat") == 0)
+    {
         stat_rpc(shell, command.file_name);
-    } else if (strcmp(command.name, "quit") == 0) {
+    }
+    else if (strcmp(command.name, "quit") == 0)
+    {
         return 1;
     }
 
     return 0;
-
 }
 
-// 
+//
 void network_command(struct Shell *shell, const char *message, int can_be_empty, int receives_ss_ip)
 {
     // Format message for network transit
@@ -397,7 +437,7 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
 
     // Send command over the network (through the provided socket)
     printf("Sending message: %s", formatted_message);
-    send_message(shell->cs_sock, formatted_message);
+    send_message(&shell->cs_sock, formatted_message);
 
     struct recv_msg_t msg = recv_message_client(shell->cs_sock);
     if (msg.quit)
@@ -434,7 +474,8 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
         printf("Parsing response to get ss_ip and ss_port\n");
         parse_response_to_get_ss(output, formatted_message);
     }
-    else{
+    else
+    {
         printf("%s\n", output);
     }
 
@@ -446,7 +487,7 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
 }
 
 struct Command parse_command(char *command_str)
-{ 
+{
     struct Command empty = {"", "", ""};
 
     // grab each of the tokens (if they exist)
@@ -454,35 +495,46 @@ struct Command parse_command(char *command_str)
     int num_tokens = sscanf(command_str, "%s %s %s", command.name, command.file_name, command.write_data);
 
     // Check for empty command line
-    if (num_tokens == 0) {
+    if (num_tokens == 0)
+    {
         return empty;
     }
 
     // Check for invalid command lines
     if (strcmp(command.name, "ls") == 0 ||
         strcmp(command.name, "home") == 0 ||
-        strcmp(command.name, "quit") == 0) {
-        if (num_tokens != 1) {
+        strcmp(command.name, "quit") == 0)
+    {
+        if (num_tokens != 1)
+        {
             fprintf(stderr, "Invalid command line: %s has improper number of arguments\n", command.name);
             return empty;
         }
-    } else if (strcmp(command.name, "mkdir") == 0 ||
-               strcmp(command.name, "cd") == 0 ||
-               strcmp(command.name, "rmdir") == 0 ||
-               strcmp(command.name, "create") == 0 ||
-               strcmp(command.name, "cat") == 0 ||
-               strcmp(command.name, "rm") == 0 ||
-               strcmp(command.name, "stat") == 0) {
-        if (num_tokens != 2) {
+    }
+    else if (strcmp(command.name, "mkdir") == 0 ||
+             strcmp(command.name, "cd") == 0 ||
+             strcmp(command.name, "rmdir") == 0 ||
+             strcmp(command.name, "create") == 0 ||
+             strcmp(command.name, "cat") == 0 ||
+             strcmp(command.name, "rm") == 0 ||
+             strcmp(command.name, "stat") == 0)
+    {
+        if (num_tokens != 2)
+        {
             fprintf(stderr, "Invalid command line: %s has improper number of arguments\n", command.name);
             return empty;
         }
-    } else if (strcmp(command.name, "write") == 0 || strcmp(command.name, "head") == 0) {
-        if (num_tokens != 3) {
+    }
+    else if (strcmp(command.name, "write") == 0 || strcmp(command.name, "head") == 0)
+    {
+        if (num_tokens != 3)
+        {
             fprintf(stderr, "Invalid command line: %s has improper number of arguments\n", command.name);
             return empty;
         }
-    } else {
+    }
+    else
+    {
         fprintf(stderr, "Invalid command line: %s is not a command\n", command.name);
         return empty;
     }

@@ -86,7 +86,7 @@ void create_server_sockets(struct nfs_network *network) {
 
 
 // mounts the file system
-void fs_mount(struct nfs_network* network, int sock_fd)
+void fs_mount(struct nfs_network* network)
 {
     // Assuming we dont have any servers before hand, like before we start the
     // server, lets create 3 storage servers.

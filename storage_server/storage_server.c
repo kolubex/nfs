@@ -8,17 +8,18 @@
 #include "../common/helper.h"
 #include "functionalities.h"
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #define BACKLOG 10 // Maximum length of the queue of pending connections
 
 // Forward declarations of the functions
 struct sockaddr_in get_server_addr(in_port_t port);
 struct Command parse_command(const char *message);
-void exec_command(int sock_fd, struct Command command);
+void exec_command(int* sock_fd, struct Command command);
 // void response_error(const char *message);
 char *format_response(const char *code, const char *message);
-void send_message(int sock_fd, const char *message);
-struct recv_msg_t recv_message_server(int sock_fd);
+void send_message(int *sock_fd, char *message);
+struct recv_msg_t recv_message_server(int *sock_fd);
 
 // Assuming fs_mount and fs_unmount are provided
 // extern void fs_mount(int sock_fd);
@@ -51,7 +52,6 @@ struct Command
     char data[256]; // Fixed-size buffer for data
 };
 
-
 void init_storage_server(struct storage_server *server, int port, int ss_id)
 {
 
@@ -79,6 +79,49 @@ void init_storage_server(struct storage_server *server, int port, int ss_id)
     server->files[0] = "file1";
 }
 
+void* handle_client(void* client_sock)
+{
+    int *new_sock = (int *)client_sock;
+    if (new_sock < 0)
+    {
+        perror("Error: Failed to accept socket connection");
+    }
+    printf("new_sock: %d\n", *new_sock);
+    while (1)
+    {
+        struct recv_msg_t msg;
+        msg.quit = 0;
+        printf("Waiting for message from nfs\n");
+        msg = recv_message_server(new_sock);
+        if (msg.quit)
+        {
+            break;
+        }
+        struct Command command = parse_command(msg.message);
+
+        printf("command.type: %d\n", command.type);
+        if (command.type == invalid_cmd)
+        {
+            char *response = format_response(command.data, command.data);
+            send_message(new_sock, response);
+            free(response);
+        }
+        else if (command.type == noop_cmd)
+        {
+            char *response = format_response("200 OK", "");
+            send_message(new_sock, response);
+            free(response);
+        }
+        else
+        {
+            exec_command(new_sock, command);
+            // search_and_send_to_storage_server(new_sockfd, &fs, command, msg.message);
+        }
+        msg.quit = 0;
+    }
+    close(*new_sock);
+    
+}
 int main(int argc, char *argv[])
 {
     if (argc < 3)
@@ -126,46 +169,23 @@ int main(int argc, char *argv[])
         struct sockaddr_in client_addr;
         socklen_t client_len;
         printf("Waiting for connection\n");
-        int new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
-        printf("new_sockfd: %d\n", new_sockfd);
-        if (new_sockfd < 0)
-        {
-            perror("Error: Failed to accept socket connection");
-            continue;
-        }
-        struct recv_msg_t msg;
-        msg.quit = 0;
+
         while (1)
         {
-            printf("Waiting for message from nfs\n");
-            msg = recv_message_server(new_sockfd);
-            if (msg.quit)
+            int new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
+            printf("new_sockfd: %d\n", new_sockfd);
+            if (new_sockfd < 0)
             {
-                break;
+                perror("Error: Failed to accept socket connection");
+                continue;
             }
-            struct Command command = parse_command(msg.message);
-
-            printf("command.type: %d\n", command.type);
-            if (command.type == invalid_cmd)
+            pthread_t client_thread;
+            if (pthread_create(&client_thread, NULL, (void *)handle_client, (void *)&new_sockfd) < 0)
             {
-                char *response = format_response(command.data, command.data);
-                send_message(new_sockfd, response);
-                free(response);
+                perror("Error: Failed to create client thread");
+                continue;
             }
-            else if (command.type == noop_cmd)
-            {
-                char *response = format_response("200 OK", "");
-                send_message(new_sockfd, response);
-                free(response);
-            }
-            else
-            {
-                exec_command(new_sockfd, command);
-                // search_and_send_to_storage_server(new_sockfd, &fs, command, msg.message);
-            }
-            msg.quit = 0;
         }
-        close(new_sockfd);
     }
 
     close(sockfd);
@@ -198,7 +218,7 @@ struct sockaddr_in get_server_addr(in_port_t port)
 // extern void fs_head(const char *file, int n);
 // extern void fs_rm(const char *file);
 
-void exec_command(int socket_fd, struct Command command)
+void exec_command(int *socket_fd, struct Command command)
 {
     switch (command.type)
     {

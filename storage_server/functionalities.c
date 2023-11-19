@@ -12,8 +12,8 @@
 
 char *format_response(const char *code, const char *message);
 
-void send_message(int sock_fd, const char *message);
-void response_ok(char* message, int fs_sock)
+void send_message(int* sock_fd, char *message);
+void response_ok(char* message, int *fs_sock)
 {
   // Send the data (response) thought the socket.
   char* formatted_message = format_response("200 OK", message);
@@ -23,7 +23,7 @@ void response_ok(char* message, int fs_sock)
 
 
 
-void fs_create(int socket_fd, const char *file_name) {
+void fs_create(int *socket_fd, const char *file_name) {
     FILE *file = fopen(file_name, "w"); // Open the file for writing
     if (file == NULL) {
         char *error_message = "Error: Unable to create file";
@@ -36,7 +36,7 @@ void fs_create(int socket_fd, const char *file_name) {
     response_ok(success_message, socket_fd);
 }
 
-void fs_cat(int socket_fd, const char *file_name) {
+void fs_cat(int* socket_fd, const char *file_name) {
     printf("fs_cat\n");
     FILE *file = fopen(file_name, "r"); // Open the file for reading
     if (file == NULL) {
@@ -71,7 +71,7 @@ void fs_cat(int socket_fd, const char *file_name) {
     fclose(file);
 }
 
-void fs_mkdir(int socket_fd, const char *dir_name) {
+void fs_mkdir(int *socket_fd, const char *dir_name) {
     printf("fs_mkdir\n");
     int status = mkdir(dir_name, 0777); // Create a directory with read, write, execute permissions for everyone
     if (status < 0) {

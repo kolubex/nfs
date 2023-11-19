@@ -10,11 +10,10 @@ int main(int argc, char **argv)
 {
     struct Shell shell;
     struct Command myCommand;
-
+    char* port = argv[1];
     if (argc == 2)
     {
-        mountNFS(&shell, argv[1]);
-        run(&shell);
+        run(&shell, port);
     }
     else if (argc == 4 && strcmp(argv[1], "-s") == 0)
     {

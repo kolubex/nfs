@@ -5,11 +5,12 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "../common/structures.h"
 #include "../common/helper.h"
 
 #define BACKLOG 10 // Maximum length of the queue of pending connections
-
+struct nfs_network fs;
 // Forward declarations of the functions
 struct sockaddr_in get_server_addr(in_port_t port);
 struct Command parse_command(const char *message);
@@ -20,7 +21,7 @@ struct Command parse_command(const char *message);
 // struct recv_msg_t recv_message_server(int sock_fd);
 
 // Assuming fs_mount and fs_unmount are provided
-extern void fs_mount(struct nfs_network *fs, int sock_fd);
+extern void fs_mount(struct nfs_network *fs);
 // extern void fs_unmount(struct nfs_network* fs);
 
 // Command type enumeration
@@ -50,7 +51,7 @@ struct Command
     char data[256]; // Fixed-size buffer for data
 };
 
-void search_and_send_to_storage_server(int socket_fd, struct nfs_network *fs, struct Command* command, char *message)
+void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, struct Command* command, char *message)
 {
     // Iterate over the file mappings to find the storage server for the given file
     int storage_server_index = -1;
@@ -111,6 +112,53 @@ void search_and_send_to_storage_server(int socket_fd, struct nfs_network *fs, st
     }
 }
 
+void* client_thread(void* client_sock){
+    int* new_sockfd = (int*)client_sock;
+    if (*new_sockfd < 0)
+        {
+            perror("Error: Failed to accept socket connection");
+        }
+        printf("Accepted connection from client\n");
+        struct recv_msg_t msg;
+        msg.quit = 0;
+        while (1)
+        {
+            printf("Created message struct\n");
+            msg = recv_message_server(new_sockfd);
+            printf("Received message from client: %s\n", msg.message);
+            if (msg.quit)
+            {
+                printf("Client has quit\n");
+                break;
+            }
+            struct Command command = parse_command(msg.message);
+            printf("Parsed command\n");
+            if (command.type == invalid_cmd)
+            {
+                printf("Invalid command\n");
+                char *response = format_response(command.data, command.data);
+                send_message(new_sockfd, response);
+                free(response);
+            }
+            else if (command.type == noop_cmd)
+            {
+                printf("Noop command\n");
+                char *response = format_response("200 OK", "");
+                send_message(new_sockfd, response);
+                free(response);
+            }
+            else
+            {
+                // exec_command(*new_sockfd, &fs, command);
+                printf("Searching for file in storage servers\n");
+                search_and_send_to_storage_server(new_sockfd, &fs, &command, msg.message);
+            }
+        }
+
+        close(*new_sockfd);
+        // fs_unmount(&fs);
+}
+
 int main(int argc, char *argv[])
 {
     printf("Server is starting up...\n");
@@ -145,60 +193,21 @@ int main(int argc, char *argv[])
     }
 
     printf("Server is ready to handle connections\n");
-
+    // mount the fs here
+    fs_mount(&fs); //! need to edit this functions code, you send request to storage servers to give list of files they have and the compile them to keep it in mapping
+    printf("Mounted the file system\n");
     while (1)
     {
         struct sockaddr_in client_addr;
         socklen_t client_len;
         int new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
-        if (new_sockfd < 0)
+        pthread_t cli_thread;
+        if (pthread_create(&cli_thread, NULL, client_thread, (void*) &new_sockfd) < 0)
         {
-            perror("Error: Failed to accept socket connection");
+            perror("Error: Failed to create thread");
             continue;
         }
-        printf("Accepted connection from client\n");
-        struct nfs_network fs;
-        // mount the fs here
-        fs_mount(&fs, new_sockfd); //! need to edit this functions code, you send request to storage servers to give list of files they have and the compile them to keep it in mapping
-        printf("Mounted the file system\n");
-        struct recv_msg_t msg;
-        msg.quit = 0;
-        while (1)
-        {
-            printf("Created message struct\n");
-            msg = recv_message_server(new_sockfd);
-            printf("Received message from client: %s\n", msg.message);
-            if (msg.quit)
-            {
-                printf("Client has quit\n");
-                break;
-            }
-            struct Command command = parse_command(msg.message);
-            printf("Parsed command\n");
-            if (command.type == invalid_cmd)
-            {
-                printf("Invalid command\n");
-                char *response = format_response(command.data, command.data);
-                send_message(new_sockfd, response);
-                free(response);
-            }
-            else if (command.type == noop_cmd)
-            {
-                printf("Noop command\n");
-                char *response = format_response("200 OK", "");
-                send_message(new_sockfd, response);
-                free(response);
-            }
-            else
-            {
-                // exec_command(new_sockfd, &fs, command);
-                printf("Searching for file in storage servers\n");
-                search_and_send_to_storage_server(new_sockfd, &fs, &command, msg.message);
-            }
-        }
 
-        close(new_sockfd);
-        // fs_unmount(&fs);
     }
 
     close(sockfd);
