@@ -104,14 +104,17 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         printf("ssid_ip_address to which NS is connecting: %d\n", ssid_ip_address);
 
         // create a socket and connect the client with the storage server
-
         int storage_server_socket = get_socket(ip_address, ssid_port_number);
-        send_message(&storage_server_socket, message);
+        // print message 
+        printf("Sending %s to the storage server\n", message);
+        char* ss_added_message = add_ss_to_message(ssid, message);
+        send_message(&storage_server_socket, ss_added_message);
         printf("Sent message from the SS to the NS");
         // receive the message from the storage server
         struct recv_msg_t msg = recv_message_server(&storage_server_socket);
         send_message(socket_fd, msg.message);
         close(storage_server_socket);
+        // backup servers also send message
     }
 
 
@@ -135,7 +138,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         char *storage_server_info = format_response("200 OK", message);
         send_message(socket_fd, storage_server_info);
     }
-    else
+    else // this is for commands like rm, rmdir
     {
         int storage_server_socket = fs->server_sockets[storage_server_index];
         if (storage_server_socket < 0)
@@ -146,6 +149,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         // Send the message to the found storage server
         printf("Sending message to storage server: %s\n", message);
         printf("storage_server_socket: %d\n", storage_server_socket);
+        // NOTE that you need to add ss_add_message before sending 
         if (send(storage_server_socket, message, strlen(message), 0) < 0)
         {
             perror("Failed to send message to storage server");

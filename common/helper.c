@@ -247,3 +247,56 @@ int get_socket(char *ip, int port_num)
     }
     return storage_server_socket;
 }
+
+char *add_ss_to_message(int id, const char *message)
+{
+    // Assuming the maximum length of the original message and file names
+    const int MAX_LENGTH = 1024;
+    char temp_message[MAX_LENGTH];
+    strncpy(temp_message, message, MAX_LENGTH - 1);
+    temp_message[MAX_LENGTH - 1] = '\0';
+
+    // Tokenize the message
+    const char *delimiter = " ";
+    char *tokens[3]; // Maximum of 3 tokens
+    int num_tokens = 0;
+
+    char *token = strtok(temp_message, delimiter);
+    while (token != NULL && num_tokens < 3)
+    {
+        tokens[num_tokens++] = token;
+        token = strtok(NULL, delimiter);
+    }
+
+    // Construct the new message
+    char *new_message = malloc(MAX_LENGTH);
+    if (new_message == NULL)
+    {
+        perror("Memory allocation failed");
+        return NULL;
+    }
+
+    // Add the command and modified file names to the new message
+    snprintf(new_message, MAX_LENGTH, "%s ss_%d/%s", tokens[0], id, tokens[1]);
+    if (num_tokens == 3)
+    { // If there is a second file name
+        // if tokens[0] is copy then execute below commands
+        if (strcmp(tokens[0], "copy") == 0)
+        {
+            strncat(new_message, " ss_", MAX_LENGTH - strlen(new_message) - 1);
+            char id_str[32];
+            snprintf(id_str, sizeof(id_str), "%d", id);
+            strncat(new_message, id_str, MAX_LENGTH - strlen(new_message) - 1);
+            strncat(new_message, "/", MAX_LENGTH - strlen(new_message) - 1);
+            // strncat(new_message, " ", MAX_LENGTH - strlen(new_message) - 1);
+            strncat(new_message, tokens[2], MAX_LENGTH - strlen(new_message) - 1);
+        }
+        else
+        {
+            strncat(new_message, " ", MAX_LENGTH - strlen(new_message) - 1);
+            strncat(new_message, tokens[2], MAX_LENGTH - strlen(new_message) - 1);
+        }
+    }
+
+    return new_message;
+}
