@@ -17,7 +17,6 @@ struct storage_server
     uint16_t port_of_ss; // Use uint16_t for the port
     int id;
     int num_of_files;
-    int num_of_dirs;
     char* files[MAX_FILES];
     // int max_storage_capcicity = MAX_STORAGE_CAPACITY;
     int max_storage_capacity; // to be equated to MAX_STORAGE_CAPACITY in init_storage_server
@@ -26,10 +25,9 @@ struct storage_server
     int backuped_up_in[2];
     int last_backup_itself_at; // to be equated to 0 in init_storage_server // should be in ms as time increases this should increase.
     int last_backup_of_other_at; // to be equated to 0 in init_storage_server // should be in ms as time increases this should increase.
-    bool working; // initialised to true in init_storage_server and set to false in storage_server_failure
+    int working; // initialised to true in init_storage_server and set to false in storage_server_failure
     int backup_memory_consumed[2]; // is the current memory consumed by the backup of other storage server MAX is 5MB
     int own_storage_server_memory_consumed; // is the current memory consumed by the own storage server MAX is 5MB
-    bool modified;
 };
 
 

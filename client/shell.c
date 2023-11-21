@@ -241,7 +241,7 @@ void ls_rpc(struct Shell *shell)
 {
     char cmd[5]; // "ls" + endline
     snprintf(cmd, sizeof(cmd), "ls%s", endline);
-    network_command(shell, cmd, 0, 0);
+    network_command(shell, cmd, 1, 0);
 }
 
 void create_rpc(struct Shell *shell, char *fname)

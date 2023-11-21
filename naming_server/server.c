@@ -11,6 +11,7 @@
 #include "LRU.h"
 #include "tries.h"
 
+
 struct TrieNode *root = NULL;
 LRUCacheQueue *cacheQueue = NULL;
 #define MAX_CACHE
@@ -106,7 +107,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
 {
     // Iterate over the file mappings to find the storage server for the given file
     int storage_server_index = -1;
-    if (command->type != mkdir_cmd && command->type != mkfile_cmd)
+    if (command->type != mkdir_cmd && command->type != mkfile_cmd && command->type != ls_cmd)
     {
         storage_server_index = all_search(command->file);
 
@@ -120,21 +121,31 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         printf("Found storage server index: %d\n", storage_server_index);
         printf("command->type: %d\n", command->type);
     }
-    else
+    else if(command->type == mkdir_cmd || command->type == mkfile_cmd)
     {
         printf("We are NOT entering search\n");
         int ssid;
         int curr_storage = 1e9;
-        for (int i = 0; i < MAX_STORAGE_SERVERS; i++)
+        // for (int i = 0; i < MAX_STORAGE_SERVERS; i++)
+        // {
+        //     if (fs->storage_servers[i].working)
+        //     {
+        //         if (curr_storage > fs->storage_servers[i].current_storage_capacity)
+        //         {
+        //             curr_storage = fs->storage_servers[i].current_storage_capacity;
+        //             ssid = i;
+        //         }
+        //     }
+        // } uncomment this later.
+
+        int random = rand() % 2;
+        if (random == 0)
         {
-            if (fs->storage_servers[i].working)
-            {
-                if (curr_storage > fs->storage_servers[i].current_storage_capacity)
-                {
-                    curr_storage = fs->storage_servers[i].current_storage_capacity;
-                    ssid = i;
-                }
-            }
+            ssid = 0;
+        }
+        else
+        {
+            ssid = 1;
         }
 
         uint32_t ssid_port_number = fs->storage_servers[ssid].port_of_ss;
@@ -198,6 +209,16 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
     {
         printf("Entered ls command\n");
         // char *ip_address =
+        // send message as all files in the storage server seperated with /n you can get it from mappings
+        char* ls_message = (char*)malloc(sizeof(char) * 1024*20);
+        strcpy(ls_message, "");
+        for (int i = 0; i < fs->storage_servers[storage_server_index].num_of_files; i++)
+        {
+            strcat(ls_message, fs->file_mappings[i].file_name);
+            strcat(ls_message, "\n");
+        }
+        char *storage_server_info = format_response("200 OK", ls_message);
+        send_message(socket_fd, storage_server_info);
     }
     else if (command->type == cp_cmd)
     {

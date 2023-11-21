@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-
+#include <errno.h>
 #define PATH_MAX 4096
 char *format_response(const char *code, const char *message);
 
@@ -75,36 +75,66 @@ void fs_cat(int *socket_fd, const char *file_name)
     fclose(file);
 }
 
-void fs_mkdir(int *socket_fd, const char *dir_name)
-{
+// void fs_mkdir(int *socket_fd, const char *dir_name)
+// {
+//     printf("fs_mkdir\n");
+//     int status = mkdir(dir_name, 0777); // Create a directory with read, write, execute permissions for everyone
+//     if (status < 0)
+//     {
+//         char *error_message = "Error: Unable to create directory";
+//         send_message(socket_fd, error_message);
+//         return;
+//     }
+
+//     char *success_message = "Directory created successfully";
+//     response_ok(success_message, socket_fd);
+// }
+
+
+void fs_mkdir(int *socket_fd, const char *dir_name) {
     printf("fs_mkdir\n");
-    int status = mkdir(dir_name, 0777); // Create a directory with read, write, execute permissions for everyone
-    if (status < 0)
-    {
-        char *error_message = "Error: Unable to create directory";
-        send_message(socket_fd, error_message);
-        return;
+
+    char *dir_copy = strdup(dir_name); // Create a copy to avoid modifying the original string
+    char *token = strtok(dir_copy, "/");
+    char path[256] = ""; // Adjust size as needed
+
+    while (token != NULL) {
+        strcat(path, token);
+        strcat(path, "/");
+
+        if (mkdir(path, 0777) != 0 && errno != EEXIST) {
+            char *error_message = "Error: Unable to create directory";
+            send_message(socket_fd, error_message);
+            free(dir_copy);
+            return;
+        }
+
+        token = strtok(NULL, "/");
     }
+
+    free(dir_copy);
 
     char *success_message = "Directory created successfully";
     response_ok(success_message, socket_fd);
 }
 
-void fs_mkfile(int *socket_fd, const char *file_name)
-{
-    printf("fs_mkfile\n");
-    FILE *file = fopen(file_name, "w"); // Open the file for writing
-    if (file == NULL)
-    {
-        char *error_message = "Error: Unable to create file";
-        send_message(socket_fd, error_message);
-        return;
-    }
 
-    fclose(file); // Close the file after creating it
-    char *success_message = "File created successfully";
-    response_ok(success_message, socket_fd);
-}
+// void fs_mkfile(int *socket_fd, const char *file_name)
+// {
+//     printf("fs_mkfile\n");
+//     FILE *file = fopen(file_name, "w"); // Open the file for writing
+//     if (file == NULL)
+//     {
+//         char *error_message = "Error: Unable to create file";
+//         send_message(socket_fd, error_message);
+//         return;
+//     }
+
+//     fclose(file); // Close the file after creating it
+//     char *success_message = "File created successfully";
+//     response_ok(success_message, socket_fd);
+// }
+
 
 void fs_write(int *socket_fd, const char *file_name, const char *data)
 {
@@ -124,6 +154,53 @@ void fs_write(int *socket_fd, const char *file_name, const char *data)
     char *success_message = "Data written successfully";
     response_ok(success_message, socket_fd);
 }
+void create_parent_directories(const char *file_name) {
+    char *dir_copy = strdup(file_name);
+    char *last_slash = strrchr(dir_copy, '/'); // Find the last occurrence of '/'
+    if (last_slash == NULL) {
+        free(dir_copy);
+        return; // No directories to create
+    }
+
+    *last_slash = '\0'; // Truncate the string at the last '/'
+
+    char *token = strtok(dir_copy, "/");
+    char path[256] = "";
+
+    while (token != NULL) {
+        strcat(path, token);
+        strcat(path, "/");
+
+        if (mkdir(path, 0777) != 0 && errno != EEXIST) {
+            free(dir_copy);
+            return;
+        }
+
+        token = strtok(NULL, "/");
+    }
+
+    free(dir_copy);
+}
+
+
+void fs_mkfile(int *socket_fd, const char *file_name) {
+    printf("fs_mkfile\n");
+
+    create_parent_directories(file_name);
+
+    FILE *file = fopen(file_name, "w");
+    if (file == NULL) {
+        char *error_message = "Error: Unable to create file";
+        send_message(socket_fd, error_message);
+        return;
+    }
+
+    fclose(file);
+
+    char *success_message = "File created successfully";
+    response_ok(success_message, socket_fd);
+}
+
 
 void fs_rm(int *socket_fd, const char *file_name)
 {

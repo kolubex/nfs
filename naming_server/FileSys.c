@@ -35,7 +35,6 @@ void init_storage_servers(struct storage_server servers[3]) {
         servers[i].last_backup_itself_at = 0;
         servers[i].last_backup_of_other_at = 0;
         servers[i].working = true;
-        servers[i].modified = false;
         servers[i].backup_memory_consumed[0] = 0; // for 0th server it is 1. // for 1st server it is 0. // for 2nd server it is 0.
         servers[i].backup_memory_consumed[1] = 0; // for 0th server it is 2. // for 1st server it is 2. // for 2nd server it is 1.
         //  x%3 == 0. then  +1,+2; x%3 == 1. then  -1,+1;  x%3 == 2. then  -2,-1;
@@ -45,7 +44,6 @@ void init_storage_servers(struct storage_server servers[3]) {
         servers[i].backuped_up_in[1] = 1; // => need to frame up in a generalized way.
         servers[i].current_storage_capacity = 0;
         servers[i].num_of_files = 0;
-        servers[i].num_of_dirs = 0;
         servers[i].id = i;
         // create a folder for each storage server with name ss_<id>
         char dir[10];

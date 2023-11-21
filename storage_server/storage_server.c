@@ -36,8 +36,7 @@ void init_storage_server(struct storage_server *server, int port, int ss_id)
     // Other initializations...
     server->last_backup_itself_at = 0;
     server->last_backup_of_other_at = 0;
-    server->working = true;
-    server->modified = false;
+    server->working = 1;
     server->backup_memory_consumed[0] = 0; // for 0th server it is 1. // for 1st server it is 0. // for 2nd server it is 0.
     server->backup_memory_consumed[1] = 0; // for 0th server it is 2. // for 1st server it is 2. // for 2nd server it is 1.
     //  x%3 == 0. then  +1,+2; x%3 == 1. then  -1,+1;  x%3 == 2. then  -2,-1;
@@ -47,7 +46,6 @@ void init_storage_server(struct storage_server *server, int port, int ss_id)
     server->backuped_up_in[1] = 1; // => need to frame up in a generalized way.
     server->current_storage_capacity = 0;
     server->num_of_files = 0;
-    server->num_of_dirs = 0;
     server->id = ss_id;
 
     // brute forcing for now
