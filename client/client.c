@@ -9,7 +9,7 @@
 int main(int argc, char **argv)
 {
     struct Shell shell;
-    struct Command myCommand;
+    struct Command_shell myCommand;
     char* port = argv[1];
     if (argc == 2)
     {

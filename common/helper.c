@@ -8,6 +8,7 @@
 #include <unistd.h> // close()
 #include "helper.h"
 #include <arpa/inet.h>
+#include "structures.h"
 
 
 #define MAX_BUFFER_SIZE 65535
@@ -176,7 +177,7 @@ struct recv_msg_t recv_message_server(int* sock_fd) {
         printf("recv_message_server while\n");
         size = recv(*sock_fd, temp_buff, sizeof(temp_buff), 0);
         printf("size: %ld\n", size);
-        printf("temp_buff: %s\n", temp_buff);
+        printf("temp_buff_server: %s\n", temp_buff);
         if (size > 0) {
             char *new_message = realloc(msg.message, current_length + size + 1);
             if (new_message == NULL) {
@@ -248,6 +249,136 @@ int get_socket(char *ip, int port_num)
     return storage_server_socket;
 }
 
+struct Command parse_command(const char *message)
+{
+    struct Command cmd;
+    cmd.file[0] = '\0';
+    cmd.data[0] = '\0';
+
+    char name[256]; // Buffer for the command name
+    char file[256]; // Buffer for the file name
+    char data[256]; // Buffer for data or number
+
+    // Initialize these to empty strings
+    name[0] = file[0] = data[0] = '\0';
+
+    int tokens = sscanf(message, "%255s %255s %255s", name, file, data);
+    // print name name, file, data
+    printf("name: %s, file: %s, data: %s\n", name, file, data);
+    // Token counts and parsing logic
+    if (strcmp(name, "mkdir") == 0)
+    {
+        cmd.type = mkdir_cmd;
+    }
+    else if (strcmp(name, "mkfile") == 0)
+    {
+        cmd.type = mkfile_cmd;
+    }
+    else if(strcmp(name,"write") == 0)
+    {
+        cmd.type = write_cmd;
+    }
+    else if (strcmp(name, "ls") == 0)
+    {
+        cmd.type = ls_cmd;
+    }
+    else if (strcmp(name, "cd") == 0)
+    {
+        cmd.type = cd_cmd;
+    }
+    else if (strcmp(name, "home") == 0)
+    {
+        cmd.type = home_cmd;
+    }
+    else if (strcmp(name, "rmdir") == 0)
+    {
+        cmd.type = rmdir_cmd;
+    }
+    else if (strcmp(name, "create") == 0)
+    {
+        cmd.type = create_cmd;
+    }
+    else if (strcmp(name, "append") == 0)
+    {
+        cmd.type = write_cmd;
+    }
+    else if (strcmp(name, "stat") == 0)
+    {
+        cmd.type = stat_cmd;
+    }
+    else if (strcmp(name, "cat") == 0)
+    {
+        printf("cat command\n");
+        cmd.type = cat_cmd;
+    }
+    else if (strcmp(name, "head") == 0)
+    {
+        cmd.type = head_cmd;
+    }
+    else if (strcmp(name, "rm") == 0)
+    {
+        cmd.type = rm_cmd;
+    }
+    else if (strcmp(name, "quit") == 0)
+    {
+        cmd.type = quit_cmd;
+    }
+    else
+    {
+        // Handle invalid or noop
+        if (tokens == 0)
+        {
+            cmd.type = noop_cmd;
+        }
+        else
+        {
+            printf("Invalid command after parsing\n");
+            cmd.type = invalid_cmd;
+            // In case of invalid command, overwrite data with an error message
+            strncpy(cmd.data, "Invalid command: Unknown command", 255);
+            cmd.data[255] = '\0'; // Ensure null-termination
+        }
+    }
+
+    // DO ABOVE COMMENTED IMPLEMENTATION IN C
+    enum CommandType type = cmd.type;
+    if (type == ls_cmd || type == home_cmd || type == quit_cmd)
+    {
+        if (tokens != 1)
+        {
+            cmd.type = invalid_cmd;
+            strncpy(cmd.data, "Invalid command: not enough arguments. Requires 1 token", 255);
+            cmd.data[255] = '\0';
+        }
+    }
+    else if (type == mkdir_cmd || type == mkfile_cmd || type == cd_cmd || type == rmdir_cmd || type == create_cmd || type == cat_cmd || type == rm_cmd || type == stat_cmd)
+    {
+        if (tokens != 2)
+        {
+            cmd.type = invalid_cmd;
+            strncpy(cmd.data, "Invalid command: not enough arguments. Requires 2 tokens", 255);
+            cmd.data[255] = '\0';
+        }
+    }
+    else if (type == write_cmd || type == head_cmd)
+    {
+        if (tokens != 3)
+        {
+            cmd.type = invalid_cmd;
+            strncpy(cmd.data, "Invalid command: not enough arguments. Requires 3 token", 255);
+            cmd.data[255] = '\0';
+        }
+    }
+
+    // Copy the file and data buffers into the command structure
+    strncpy(cmd.file, file, 255);
+    cmd.file[255] = '\0'; // Ensure null-termination
+    strncpy(cmd.data, data, 255);
+    cmd.data[255] = '\0'; // Ensure null-termination
+
+    return cmd;
+}
+
 char *add_ss_to_message(int id, const char *message)
 {
     // Assuming the maximum length of the original message and file names
@@ -299,4 +430,3 @@ char *add_ss_to_message(int id, const char *message)
     }
 
     return new_message;
-}

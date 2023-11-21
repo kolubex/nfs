@@ -46,4 +46,32 @@ struct nfs_network {
     int num_servers;
 };
 
+
+enum CommandType
+{
+    mkdir_cmd,
+    mkfile_cmd,
+    ls_cmd,
+    cd_cmd,
+    home_cmd,
+    rmdir_cmd,
+    create_cmd,
+    write_cmd,
+    stat_cmd,
+    cat_cmd,
+    head_cmd,
+    rm_cmd,
+    quit_cmd,
+    noop_cmd,
+    invalid_cmd
+};
+
+// Command structure
+struct Command
+{
+    enum CommandType type;
+    char file[256]; // Fixed-size buffer for filename
+    char data[256]; // Fixed-size buffer for data
+};
+
 #endif

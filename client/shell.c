@@ -301,7 +301,10 @@ void run(struct Shell *shell, char *port)
 
         // Print prompt and get command line
         char command_str[MAX_COMMAND_LENGTH];
+        // put blue color and then white after
+        printf("\033[1;34m");
         printf("%s", PROMPT_STRING);
+        printf("\033[0m");
 
         if (fgets(command_str, sizeof(command_str), stdin) == NULL)
         {
@@ -355,7 +358,7 @@ void run_script(struct Shell *shell, char *file_name)
 
 int execute_command(struct Shell *shell, char *command_str)
 {
-    struct Command command = parse_command(command_str);
+    struct Command_shell command = parse_command_shell(command_str);
 
     // look for the matching command
     if (strcmp(command.name, "") == 0)
@@ -495,12 +498,12 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
     free(body);
 }
 
-struct Command parse_command(char *command_str)
+struct Command_shell parse_command_shell(char *command_str)
 {
-    struct Command empty = {"", "", ""};
+    struct Command_shell empty = {"", "", ""};
 
     // grab each of the tokens (if they exist)
-    struct Command command = {"", "", ""};
+    struct Command_shell command = {"", "", ""};
     int num_tokens = sscanf(command_str, "%s %s %s", command.name, command.file_name, command.write_data);
 
     // Check for empty command line
