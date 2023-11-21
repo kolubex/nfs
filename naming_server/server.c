@@ -8,7 +8,12 @@
 #include <pthread.h>
 #include "../common/structures.h"
 #include "../common/helper.h"
+#include "LRU.h"
+#include "tries.h"
 
+struct TrieNode *root = NULL;
+LRUCacheQueue* cacheQueue = NULL;
+#define MAX_CACHE
 #define BACKLOG 10 // Maximum length of the queue of pending connections
 struct nfs_network fs;
 // Forward declarations of the functions
@@ -26,6 +31,25 @@ extern void fs_mount(struct nfs_network *fs);
 
 // Command type enumeration
 
+// Function to search in LRU_cache, and efficient search using tries.
+int all_search(char* file)
+{
+    printf("In all_search\n");
+    int storage_server_index = -1;
+    // search in LRU_cache
+    storage_server_index = LRU_search(cacheQueue, file);
+    if (storage_server_index != -1)
+    {
+        return storage_server_index;
+    }
+    // search in tries
+    storage_server_index = Efficient_search(root, file);
+    if (storage_server_index != -1)
+    {
+        return storage_server_index;
+    }
+    return -1;
+}
 void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message)
 {
     // Iterate over the file mappings to find the storage server for the given file
@@ -33,15 +57,16 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
     if (command->type != mkdir_cmd && command->type != mkfile_cmd)
     {
 
-        for (int i = 0; i < MAX_FILES; i++)
-        {
-            printf("Comparing file name: %s\n", fs->file_mappings[i].file_name);
-            if (strcmp(fs->file_mappings[i].file_name, command->file) == 0)
-            {
-                storage_server_index = fs->file_mappings[i].storage_server_index;
-                break;
-            }
-        }
+        // for (int i = 0; i < MAX_FILES; i++)
+        // {
+        //     printf("Comparing file name: %s\n", fs->file_mappings[i].file_name);
+        //     if (strcmp(fs->file_mappings[i].file_name, command->file) == 0)
+        //     {
+        //         storage_server_index = fs->file_mappings[i].storage_server_index;
+        //         break;
+        //     }
+        // }
+        storage_server_index = all_search(command->file);
 
         if (storage_server_index == -1)
         {
@@ -100,6 +125,9 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
             fs->file_mappings[fs->storage_servers->num_of_files].storage_server_index = ssid;
             strcpy(fs->file_mappings[fs->storage_servers->num_of_files].file_name, command->file);
             fs->storage_servers->num_of_files++;
+            insert(root, command->file, ssid);
+            // add to the LRU cache
+            enqueue(cacheQueue, command->file, ssid);
         }
         send_message(socket_fd, msg.message);
         close(storage_server_socket);
@@ -164,6 +192,8 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
                     strcpy(fs->file_mappings[i].file_name, "");
                     fs->file_mappings[i].storage_server_index = -1;
                     fs->storage_servers[storage_server_index].num_of_files--;
+                    removeFileName(root, command->file);
+                    LRU_set_to_neg(cacheQueue, command->file);
                     break;
                 }
             }
@@ -221,6 +251,8 @@ void *client_thread(void *client_sock)
 
 int main(int argc, char *argv[])
 {
+    root = createNode();
+    cacheQueue = createLRUCacheQueue(5);
     printf("Server is starting up...\n");
     if (argc < 2)
     {

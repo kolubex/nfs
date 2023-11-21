@@ -20,8 +20,10 @@ naming_server:
 	cd ./naming_server && \
 	gcc -c server.c && \
 	gcc -c FileSys.c && \
+	gcc -c LRU.c && \
+	gcc -c tries.c && \
 	gcc -c ../common/helper.c && \
-	gcc -o nfs server.o FileSys.o helper.o
+	gcc -o nfs server.o FileSys.o helper.o tries.o LRU.o
 
 clean:
 	find . -name "*.o" -type f -delete
