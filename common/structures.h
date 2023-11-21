@@ -19,7 +19,6 @@ struct storage_server
     int num_of_files;
     int num_of_dirs;
     char* files[MAX_FILES];
-    char* folders[MAX_DIRECTORIES];
     // int max_storage_capcicity = MAX_STORAGE_CAPACITY;
     int max_storage_capacity; // to be equated to MAX_STORAGE_CAPACITY in init_storage_server
     int current_storage_capacity;
@@ -59,7 +58,7 @@ enum CommandType
     write_cmd,
     stat_cmd,
     cat_cmd,
-    head_cmd,
+    cp_cmd,
     rm_cmd,
     quit_cmd,
     noop_cmd,

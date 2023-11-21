@@ -195,6 +195,7 @@ struct recv_msg_t recv_message_server(int* sock_fd) {
 
             // Check for end of message
             if (strstr(msg.message, "\r\n") != NULL) {
+                printf("Enter avvaku munda\n");
                 break;
             }
         } else if (size == 0) {
@@ -251,6 +252,7 @@ int get_socket(char *ip, int port_num)
 
 struct Command parse_command(const char *message)
 {
+    printf("parse_command in thaggede le\n");
     struct Command cmd;
     cmd.file[0] = '\0';
     cmd.data[0] = '\0';
@@ -311,9 +313,9 @@ struct Command parse_command(const char *message)
         printf("cat command\n");
         cmd.type = cat_cmd;
     }
-    else if (strcmp(name, "head") == 0)
+    else if (strcmp(name, "cp") == 0)
     {
-        cmd.type = head_cmd;
+        cmd.type = cp_cmd;
     }
     else if (strcmp(name, "rm") == 0)
     {
@@ -360,7 +362,7 @@ struct Command parse_command(const char *message)
             cmd.data[255] = '\0';
         }
     }
-    else if (type == write_cmd || type == head_cmd)
+    else if (type == write_cmd || type == cp_cmd)
     {
         if (tokens != 3)
         {
@@ -379,7 +381,7 @@ struct Command parse_command(const char *message)
     return cmd;
 }
 
-char *add_ss_to_message(int id, const char *message)
+char *add_ss_to_message(int id1, int id2, const char *message)
 {
     // Assuming the maximum length of the original message and file names
     const int MAX_LENGTH = 1024;
@@ -408,19 +410,20 @@ char *add_ss_to_message(int id, const char *message)
     }
 
     // Add the command and modified file names to the new message
-    snprintf(new_message, MAX_LENGTH, "%s ss_%d/%s", tokens[0], id, tokens[1]);
+    snprintf(new_message, MAX_LENGTH, "%s ss_%d/%s", tokens[0], id1, tokens[1]);
     if (num_tokens == 3)
     { // If there is a second file name
         // if tokens[0] is copy then execute below commands
-        if (strcmp(tokens[0], "copy") == 0)
+        if (strcmp(tokens[0], "cp") == 0)
         {
             strncat(new_message, " ss_", MAX_LENGTH - strlen(new_message) - 1);
-            char id_str[32];
-            snprintf(id_str, sizeof(id_str), "%d", id);
-            strncat(new_message, id_str, MAX_LENGTH - strlen(new_message) - 1);
+            char id2_str[32];
+            snprintf(id2_str, sizeof(id2_str), "%d", id2);
+            strncat(new_message, id2_str, MAX_LENGTH - strlen(new_message) - 1);
             strncat(new_message, "/", MAX_LENGTH - strlen(new_message) - 1);
             // strncat(new_message, " ", MAX_LENGTH - strlen(new_message) - 1);
             strncat(new_message, tokens[2], MAX_LENGTH - strlen(new_message) - 1);
+            printf("new_message: %s\n", new_message);
         }
         else
         {

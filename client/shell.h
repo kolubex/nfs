@@ -55,7 +55,7 @@ void write_rpc(struct Shell *shell, char *fname, char *data);
 
 void cat_rpc(struct Shell *shell, char *fname);
 
-void head_rpc(struct Shell *shell,char *fname, int n);
+void cp_rpc(struct Shell *shell,char *fname, char* n);
 
 void rm_rpc(struct Shell *shell, char *fname);
 

@@ -42,7 +42,7 @@ void parse_response_to_get_ss(char *response, char *formatted_message)
     }
     int ss_sock = get_socket(ss_ip, port_num);
     printf("Sending message in ss: %s", formatted_message);
-    char* ss_added_message = add_ss_to_message(ssid, formatted_message);
+    char* ss_added_message = add_ss_to_message(ssid, -1, formatted_message);
     send_message(&ss_sock, ss_added_message);
     printf("Waiting for response\n");
     struct recv_msg_t msg = recv_message_client(ss_sock);
@@ -265,11 +265,11 @@ void cat_rpc(struct Shell *shell, char *fname)
     network_command(shell, cmd, 1, 1);
 }
 
-void cp_rpc(struct Shell *shell, char *fname, char* n)
+void cp_rpc(struct Shell *shell, char *fname, char* file2)
 {
-    // char cmd[MAX_NAME_LENGTH + 15]; // command + "head " + endline
-    // snprintf(cmd, sizeof(cmd), "head %s %d%s", fname, n, endline);
-    // network_command(shell, cmd, 1, 1);
+    char cmd[MAX_NAME_LENGTH * 2 + 15]; // command + "write " + endline
+    snprintf(cmd, sizeof(cmd), "cp %s %s%s", fname, file2, endline);
+    network_command(shell, cmd, 1, 0);
 }
 
 void rm_rpc(struct Shell *shell, char *fname)
@@ -527,7 +527,7 @@ struct Command_shell parse_command_shell(char *command_str)
             return empty;
         }
     }
-    else if (strcmp(command.name, "write") == 0 || strcmp(command.name, "head") == 0)
+    else if (strcmp(command.name, "write") == 0 || strcmp(command.name, "cp") == 0)
     {
         if (num_tokens != 3)
         {

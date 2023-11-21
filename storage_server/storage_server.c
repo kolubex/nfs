@@ -70,6 +70,7 @@ void *handle_client(void *client_sock)
         msg = recv_message_server(new_sock);
         if (msg.quit)
         {
+            printf("quitting aosdjfnasekrjwe\n");
             break;
         }
         struct Command command = parse_command(msg.message);
@@ -232,7 +233,7 @@ void exec_command(int *socket_fd, struct Command command)
         printf("command.file: %s\n", command.file);
         fs_cat(socket_fd, command.file);
         break;
-    case head_cmd:
+    case cp_cmd:
         // fs_head(command.file, atoi(command.data));
         break;
     case rm_cmd:
