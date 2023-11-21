@@ -430,3 +430,4 @@ char *add_ss_to_message(int id, const char *message)
     }
 
     return new_message;
+}
