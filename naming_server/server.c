@@ -12,7 +12,7 @@
 #include "tries.h"
 
 struct TrieNode *root = NULL;
-LRUCacheQueue* cacheQueue = NULL;
+LRUCacheQueue *cacheQueue = NULL;
 #define MAX_CACHE
 #define BACKLOG 10 // Maximum length of the queue of pending connections
 struct nfs_network fs;
@@ -27,12 +27,13 @@ struct Command parse_command(const char *message);
 
 // Assuming fs_mount and fs_unmount are provided
 extern void fs_mount(struct nfs_network *fs);
+void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message,int storage_server_index_read, int storage_server_index_write);
 // extern void fs_unmount(struct nfs_network* fs);
 
 // Command type enumeration
 
 // Function to search in LRU_cache, and efficient search using tries.
-int all_search(char* file)
+int all_search(char *file)
 {
     printf("In all_search\n");
     int storage_server_index = -1;
@@ -50,6 +51,57 @@ int all_search(char* file)
     }
     return -1;
 }
+
+void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message, int storage_server_index_read, int storage_server_index_write)
+{
+    char *ip_address = "127.0.0.1";
+    int storage_server_index_read_socket = get_socket(ip_address, fs->storage_servers[storage_server_index_read].port_of_ss);
+    char *ss_added_message = add_ss_to_message(storage_server_index_read, -1, message);
+    char read_message[50];
+    strcpy(read_message, "cat ");
+    char *second_token = strtok(ss_added_message, " ");
+    second_token = strtok(NULL, " ");
+    if (second_token != NULL)
+    {
+        strcat(read_message, second_token);
+    }
+    printf("read_message: %s\n", read_message);
+    // add \r\n to the read_message
+    strcat(read_message, "\r\n");
+    send_message(&storage_server_index_read_socket, read_message);
+    struct recv_msg_t msg = recv_message_server(&storage_server_index_read_socket);
+    printf("Received message from the storage server: %s\n", msg.message);
+    char *last_token = NULL;
+    char *token = strtok(msg.message, " \r\n");
+    close(storage_server_index_read_socket);
+    while (token != NULL)
+    {
+        printf("token: %s\n", token);
+        last_token = token;
+        token = strtok(NULL, " \n\r");
+    }
+    if (last_token == NULL)
+    {
+        send_message(socket_fd, "File doesn't have any content to copy");
+    }
+    else
+    {
+        // all_search for file in command->data
+        int storage_server_index_write_socket = get_socket(ip_address, fs->storage_servers[storage_server_index_write].port_of_ss);
+        char write_message[50];
+        strcpy(write_message, "write ");
+        strcat(write_message, command->data);
+        strcat(write_message, " ");
+        strcat(write_message, last_token);
+        strcat(write_message, "\r\n");
+        printf("write_message: %s\n", write_message);
+        char *ss_added_message = add_ss_to_message(storage_server_index_write, -1, write_message);
+        send_message(&storage_server_index_write_socket, ss_added_message);
+        struct recv_msg_t msg = recv_message_server(&storage_server_index_write_socket);
+        send_message(socket_fd, msg.message);
+    }
+}
+
 void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message)
 {
     // Iterate over the file mappings to find the storage server for the given file
@@ -96,7 +148,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         int storage_server_socket = get_socket(ip_address, ssid_port_number);
         // print message
         printf("Sending %s to the storage server\n", message);
-        char *ss_added_message = add_ss_to_message(ssid,-1, message);
+        char *ss_added_message = add_ss_to_message(ssid, -1, message);
         send_message(&storage_server_socket, ss_added_message);
         printf("Sent message from the SS to the NS");
         // receive the message from the storage server
@@ -123,7 +175,6 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         close(storage_server_socket);
         // backup servers also send message
     }
-
     if (command->type == cat_cmd || command->type == write_cmd || command->type == stat_cmd)
     {
         printf("Entered if statement, now send data\n");
@@ -143,61 +194,28 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         char *storage_server_info = format_response("200 OK", message);
         send_message(socket_fd, storage_server_info);
     }
-    else if(command->type == ls_cmd)
+    else if (command->type == ls_cmd)
     {
         printf("Entered ls command\n");
-        // char *ip_address = 
+        // char *ip_address =
     }
-    else if(command->type == cp_cmd)
+    else if (command->type == cp_cmd)
     {
         // assuming command->data is the file name
         // storaage_server_index read, command.data write with content returned by reading command->file
-        char *ip_address = "127.0.0.1";
-        int storage_server_index_read_socket = get_socket(ip_address, fs->storage_servers[storage_server_index].port_of_ss);
-        char *ss_added_message = add_ss_to_message(storage_server_index,-1, message);
-        char read_message[50];
-        strcpy(read_message, "cat ");
-        char* second_token = strtok(ss_added_message, " ");
-        second_token = strtok(NULL, " ");
-        if (second_token != NULL)
+        int storage_server_read_index = all_search(command->file);
+        if (storage_server_read_index == -1)
         {
-            strcat(read_message, second_token);
+            printf("File not found in any storage server.\n");
+            return;
         }
-        printf("read_message: %s\n", read_message);
-        // add \r\n to the read_message
-        strcat(read_message, "\r\n");
-        send_message(&storage_server_index_read_socket, read_message);
-        struct recv_msg_t msg = recv_message_server(&storage_server_index_read_socket);
-        printf("Received message from the storage server: %s\n", msg.message);
-        char* last_token = NULL;
-        char* token = strtok(msg.message, " \r\n");
-        while (token != NULL)
+        int storage_server_write_index = all_search(command->data);
+        if (storage_server_write_index == -1)
         {
-            printf("token: %s\n", token);
-            last_token = token;
-            token = strtok(NULL, " \n\r");
+            printf("File not found in any storage server.\n");
+            return;
         }
-        if (last_token == NULL)
-        {
-            send_message(socket_fd, "File doesn't have any content to copy");
-        }
-        else
-        {
-            char write_message[50];
-            strcpy(write_message, "write ");
-            strcat(write_message, command->data);
-            strcat(write_message, " ");
-            strcat(write_message, last_token);
-            strcat(write_message, "\r\n");
-            printf("write_message: %s\n", write_message);
-            char *ss_added_message = add_ss_to_message(storage_server_index,-1, write_message);
-            send_message(&storage_server_index_read_socket, ss_added_message);
-            struct recv_msg_t msg = recv_message_server(&storage_server_index_read_socket);
-            send_message(socket_fd, msg.message);
-        }
-        // get the first three characters of msg.message
-        send_message(&storage_server_index_read_socket, ss_added_message);
-
+        copy_execution(socket_fd, fs, command, message, storage_server_read_index, storage_server_write_index);
     }
     else if (command->type == rmdir_cmd || command->type == rm_cmd)
     {
@@ -218,7 +236,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         char *ip_address = "127.0.0.1";
         int storage_server_socket = get_socket(ip_address, fs->storage_servers[storage_server_index].port_of_ss);
 
-        char *ss_added_message = add_ss_to_message(storage_server_index,-1, message);
+        char *ss_added_message = add_ss_to_message(storage_server_index, -1, message);
         send_message(&storage_server_socket, ss_added_message);
         struct recv_msg_t msg = recv_message_server(&storage_server_socket);
         send_message(socket_fd, msg.message);
