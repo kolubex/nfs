@@ -12,7 +12,7 @@
 
 #define MAX_NAME_LENGTH 100
 
-struct Command
+struct Command_shell
 {
   char name[MAX_NAME_LENGTH];
   char file_name[MAX_NAME_LENGTH];
@@ -35,7 +35,7 @@ void run_script(struct Shell *shell, char *file_name);
 
 int execute_command(struct Shell *shell, char *command_str);
 
-struct Command parse_command(char *command_str);
+struct Command_shell parse_command_shell(char *command_str);
 
 void mkdir_rpc(struct Shell *shell, char *dname);
 
