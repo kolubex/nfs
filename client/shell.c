@@ -365,12 +365,12 @@ int execute_command(struct Shell *shell, char *command_str)
     }
     else if (strcmp(command.name, "mkdir") == 0)
     {
-        printf("Found mkdir\n");
+        // printf("Found mkdir\n");
         mkdir_rpc(shell, command.file_name);
     }
     else if (strcmp(command.name, "mkfile") == 0)
     {
-        printf("Found mkfile hello\n");
+        // printf("Found mkfile hello\n");
         mkfile_rpc(shell, command.file_name);
     }
 
@@ -477,7 +477,7 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
     }
     else
     {
-        printf("rodd gaa%s\n", output);
+        printf("%s\n", output);
     }
 
     // Free allocated memory

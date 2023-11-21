@@ -15,5 +15,5 @@ void fs_mkfile(int *socket_fd, const char *file_name);
 void fs_write(int *socket_fd, const char *file_name, const char *data);
 void fs_rm(int *socket_fd, const char *file_name);
 void fs_rmdir(int *socket_fd, const char *dir_name);
-
+void fs_stat(int *socket_fd, const char *file_name);
 #endif // FUNCTIONALITIES_H

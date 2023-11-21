@@ -31,17 +31,27 @@ void init_storage_servers(struct storage_server servers[3]) {
     for (int i = 0; i < 3; i++) {
         // servers[i].ip_of_ss = 0x7F000001; // 127.0.0.1 as an example
         inet_pton(AF_INET, "127.0.0.1", &servers[i].ip_of_ss); // Convert string IP to numeric
-        servers[i].port_of_ss = 50000 + i; // Ports 50000, 10001, 10002
+        servers[i].port_of_ss = 10000 + i; // Ports 50000, 10001, 10002
         servers[i].last_backup_itself_at = 0;
         servers[i].last_backup_of_other_at = 0;
-        servers[i].working = true;
+        servers[i].working = 1;
         servers[i].backup_memory_consumed[0] = 0; // for 0th server it is 1. // for 1st server it is 0. // for 2nd server it is 0.
         servers[i].backup_memory_consumed[1] = 0; // for 0th server it is 2. // for 1st server it is 2. // for 2nd server it is 1.
         //  x%3 == 0. then  +1,+2; x%3 == 1. then  -1,+1;  x%3 == 2. then  -2,-1;
         servers[i].backup_of[0] = 1; // => need to frame up in a generalized way.
         servers[i].backup_of[1] = 2; // => need to frame up in a generalized way.
-        servers[i].backuped_up_in[0] = 0; // => need to frame up in a generalized way.
-        servers[i].backuped_up_in[1] = 1; // => need to frame up in a generalized way.
+        // servers[i].backuped_up_in[0] = 0; // => need to frame up in a generalized way.
+        // servers[i].backuped_up_in[1] = 1; // => need to frame up in a generalized way.
+        if(i % 3 == 0) {
+            servers[i].backuped_up_in[0] = i + 1;
+            servers[i].backuped_up_in[1] = i + 2;
+        } else if(i % 3 == 1) {
+            servers[i].backuped_up_in[0] = i - 1;
+            servers[i].backuped_up_in[1] = i + 1;
+        } else {
+            servers[i].backuped_up_in[0] = i - 2;
+            servers[i].backuped_up_in[1] = i - 1;
+        }
         servers[i].current_storage_capacity = 0;
         servers[i].num_of_files = 0;
         servers[i].id = i;
@@ -103,7 +113,6 @@ void fs_mount(struct nfs_network* network)
     // storage_servers[0].files[0] = "file1";
     // struct nfs_network network;
     memcpy(network->storage_servers, storage_servers, sizeof(storage_servers));
-    printf("Calling create_server_sockets\n");
     // create_server_sockets(network);
     // strncpy(network->file_mappings[0].file_name, "file1", MAX_FILENAME_LENGTH - 1);
     network->file_mappings[0].file_name[MAX_FILENAME_LENGTH - 1] = '\0'; // Ensure null-termination

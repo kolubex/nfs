@@ -15,4 +15,5 @@ struct recv_msg_t recv_message_server(int *sock_fd);
 int get_socket(char *ip_address, int port_num);
 struct Command parse_command(const char *message);
 char *add_ss_to_message(int id1, int id2, const char *message);
+int check_connection(char *ip, int port_num);
 #endif

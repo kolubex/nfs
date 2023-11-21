@@ -11,7 +11,6 @@
 #include "LRU.h"
 #include "tries.h"
 
-
 struct TrieNode *root = NULL;
 LRUCacheQueue *cacheQueue = NULL;
 #define MAX_CACHE
@@ -20,6 +19,7 @@ struct nfs_network fs;
 // Forward declarations of the functions
 struct sockaddr_in get_server_addr(in_port_t port);
 struct Command parse_command(const char *message);
+int get_socket2(char *ip, int port_num, int ssid);
 // void exec_command(int sock_fd, struct nfs_network* fs, struct Command command);
 // void response_error(const char* message);
 // char* format_response(const char* code, const char* message);
@@ -28,15 +28,89 @@ struct Command parse_command(const char *message);
 
 // Assuming fs_mount and fs_unmount are provided
 extern void fs_mount(struct nfs_network *fs);
-void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message,int storage_server_index_read, int storage_server_index_write);
+void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message, int storage_server_index_read, int storage_server_index_write);
+void backup_things(int ssid, char *message);
 // extern void fs_unmount(struct nfs_network* fs);
 
 // Command type enumeration
+int get_socket2(char *ip, int port_num, int ssid)
+{
+    if (fs.storage_servers[ssid].working == 0)
+    {
+        // try for the first backup
+        if (fs.storage_servers[fs.storage_servers[ssid].backuped_up_in[0]].working == 1)
+        {
+            return (get_socket2(ip, fs.storage_servers[fs.storage_servers[ssid].backuped_up_in[0]].port_of_ss, fs.storage_servers[ssid].backuped_up_in[0]));
+        }
+        else if(fs.storage_servers[fs.storage_servers[ssid].backuped_up_in[1]].working == 1)
+        {
+            return (get_socket2(ip, fs.storage_servers[fs.storage_servers[ssid].backuped_up_in[1]].port_of_ss, fs.storage_servers[ssid].backuped_up_in[1]));
+        }
+        else
+        {
+            printf("No backup servers are working\n");
+            return -1;
+        }
+    }
+    int storage_server_socket = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
+    if (storage_server_socket < 0)
+    {
+        perror("Error: Failed to create socket");
+        exit(1);
+    }
 
+    struct sockaddr_in storage_server_addr;
+    char *ip_address = "127.0.0.1";
+
+    // Initialize storage_server_addr with zeros
+    memset(&storage_server_addr, 0, sizeof(storage_server_addr));
+
+    storage_server_addr.sin_family = AF_INET;
+    storage_server_addr.sin_port = htons(port_num);
+
+    // Convert IP address string to binary form
+    if (inet_pton(AF_INET, ip_address, &storage_server_addr.sin_addr) <= 0)
+    {
+        // perror("inet_pton");
+        printf("inet_pton error occured trying for backup servers\n");
+        // exit(1);
+        fs.storage_servers[ssid].working = 0;
+        return(get_socket2(ip_address, fs.storage_servers[ssid].port_of_ss, ssid));
+    }
+    if (connect(storage_server_socket, (struct sockaddr *)&storage_server_addr, sizeof(storage_server_addr)) < 0)
+    {
+        printf("connect error occured trying for backup servers\n");
+        // exit(1);
+        fs.storage_servers[ssid].working = 0;
+        return(get_socket2(ip_address, fs.storage_servers[ssid].port_of_ss, ssid));
+    }
+    return storage_server_socket;
+}
+
+void backup_things(int ssid, char *message)
+{
+    // create a socket and connect the client with the storage server
+    // get the backup ssid's from the -> backened_up_in array and send the same messages to it after creating a socket
+    printf("In backup_things\n");
+    char *ip_address = "127.0.0.1";
+    int ssid_1 = fs.storage_servers[ssid].backuped_up_in[0];
+    char *message_for_1 = add_ss_to_message(ssid_1, -1, message);
+    int backup_socket_1 = get_socket2(ip_address, fs.storage_servers[ssid_1].port_of_ss, ssid_1);
+    send_message(&backup_socket_1, message_for_1);
+    struct recv_msg_t msg = recv_message_server(&backup_socket_1);
+    printf("Received message from the storage server: %s\n", msg.message);
+    close(backup_socket_1);
+    int ssid_2 = fs.storage_servers[ssid].backuped_up_in[1];
+    char *message_for_2 = add_ss_to_message(ssid_2, -1, message);
+    int backup_socket_2 = get_socket2(ip_address, fs.storage_servers[ssid_2].port_of_ss, ssid_2);
+    send_message(&backup_socket_2, message_for_2);
+    msg = recv_message_server(&backup_socket_2);
+    close(backup_socket_2);
+    printf("Received message from the storage server: %s\n", msg.message);
+}
 // Function to search in LRU_cache, and efficient search using tries.
 int all_search(char *file)
 {
-    printf("In all_search\n");
     int storage_server_index = -1;
     // search in LRU_cache
     storage_server_index = LRU_search(cacheQueue, file);
@@ -56,7 +130,7 @@ int all_search(char *file)
 void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message, int storage_server_index_read, int storage_server_index_write)
 {
     char *ip_address = "127.0.0.1";
-    int storage_server_index_read_socket = get_socket(ip_address, fs->storage_servers[storage_server_index_read].port_of_ss);
+    int storage_server_index_read_socket = get_socket2(ip_address, fs->storage_servers[storage_server_index_read].port_of_ss, storage_server_index_read);
     char *ss_added_message = add_ss_to_message(storage_server_index_read, -1, message);
     char read_message[50];
     strcpy(read_message, "cat ");
@@ -77,7 +151,6 @@ void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *comm
     close(storage_server_index_read_socket);
     while (token != NULL)
     {
-        printf("token: %s\n", token);
         last_token = token;
         token = strtok(NULL, " \n\r");
     }
@@ -88,7 +161,7 @@ void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *comm
     else
     {
         // all_search for file in command->data
-        int storage_server_index_write_socket = get_socket(ip_address, fs->storage_servers[storage_server_index_write].port_of_ss);
+        int storage_server_index_write_socket = get_socket2(ip_address, fs->storage_servers[storage_server_index_write].port_of_ss, storage_server_index_write);
         char write_message[50];
         strcpy(write_message, "write ");
         strcat(write_message, command->data);
@@ -100,6 +173,8 @@ void copy_execution(int *socket_fd, struct nfs_network *fs, struct Command *comm
         send_message(&storage_server_index_write_socket, ss_added_message);
         struct recv_msg_t msg = recv_message_server(&storage_server_index_write_socket);
         send_message(socket_fd, msg.message);
+        close(storage_server_index_write_socket);
+        backup_things(storage_server_index_write, write_message);
     }
 }
 
@@ -119,9 +194,8 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
 
         // Get the socket for the found storage server
         printf("Found storage server index: %d\n", storage_server_index);
-        printf("command->type: %d\n", command->type);
     }
-    else if(command->type == mkdir_cmd || command->type == mkfile_cmd)
+    else if (command->type == mkdir_cmd || command->type == mkfile_cmd)
     {
         printf("We are NOT entering search\n");
         int ssid;
@@ -138,7 +212,9 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         //     }
         // } uncomment this later.
 
-        int random = rand() % 2;
+        int random = rand() % 1;
+        random = 0; // for testing purposes
+        printf("random: %d\n", random);
         if (random == 0)
         {
             ssid = 0;
@@ -147,7 +223,6 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         {
             ssid = 1;
         }
-
         uint32_t ssid_port_number = fs->storage_servers[ssid].port_of_ss;
         uint32_t ssid_ip_address = fs->storage_servers[ssid].ip_of_ss;
 
@@ -156,7 +231,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         printf("ssid_ip_address to which NS is connecting: %d\n", ssid_ip_address);
 
         // create a socket and connect the client with the storage server
-        int storage_server_socket = get_socket(ip_address, ssid_port_number);
+        int storage_server_socket = get_socket2(ip_address, ssid_port_number, ssid);
         // print message
         printf("Sending %s to the storage server\n", message);
         char *ss_added_message = add_ss_to_message(ssid, -1, message);
@@ -184,11 +259,12 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         }
         send_message(socket_fd, msg.message);
         close(storage_server_socket);
+        backup_things(ssid, message);
         // backup servers also send message
     }
     if (command->type == cat_cmd || command->type == write_cmd || command->type == stat_cmd)
     {
-        printf("Entered if statement, now send data\n");
+        char* ip = "127.0.0.1";
         uint32_t storage_server_ip_address = fs->storage_servers[storage_server_index].ip_of_ss;
         char storage_server_ip_string[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &storage_server_ip_address, storage_server_ip_string, INET_ADDRSTRLEN);
@@ -197,28 +273,56 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         sprintf(storage_server_port_string, "%u", storage_server_port_num);
         enqueue(cacheQueue, command->file, storage_server_index);
         int storage_server_id = fs->storage_servers[storage_server_index].id;
+        // send storage server id only if it is working else go for backups
+        if(fs->storage_servers[storage_server_index].working == 0 || check_connection(ip, fs->storage_servers[storage_server_index].port_of_ss) == -1)
+        {
+            printf("Storage server is not working going for backups\n");
+            fs->storage_servers[storage_server_index].working = 0;
+            if(fs->storage_servers[fs->storage_servers[storage_server_index].backuped_up_in[0]].working == 1 && check_connection(ip, fs->storage_servers[fs->storage_servers[storage_server_index].backuped_up_in[0]].port_of_ss) != -1)
+            {
+                printf("Backup server 1 is working\n");
+                storage_server_id = fs->storage_servers[storage_server_index].backuped_up_in[0];
+                storage_server_port_num = fs->storage_servers[storage_server_index].port_of_ss;
+            }
+            else if(fs->storage_servers[fs->storage_servers[storage_server_index].backuped_up_in[1]].working == 1 && check_connection(ip, fs->storage_servers[fs->storage_servers[storage_server_index].backuped_up_in[1]].port_of_ss) != -1)
+            {
+                printf("Backup server 2 is working\n");
+                storage_server_id = fs->storage_servers[storage_server_index].backuped_up_in[1];
+                storage_server_port_num = fs->storage_servers[storage_server_index].port_of_ss;
+            }
+            else
+            {
+                printf("No backup servers are working\n");
+                return;
+            }
+        }
         // convert storage_server_id to string with a int to string function
         char storage_server_id_string[10];
         sprintf(storage_server_id_string, "%d", storage_server_id);
-        char message[1024]; // Ensure this buffer is large enough
-        sprintf(message, "%s %s %s", storage_server_ip_string, storage_server_port_string, storage_server_id_string);
-        char *storage_server_info = format_response("200 OK", message);
+        char message1[1024]; // Ensure this buffer is large enough
+        sprintf(message1, "%s %s %s", storage_server_ip_string, storage_server_port_string, storage_server_id_string);
+        char *storage_server_info = format_response("200 OK", message1);
         send_message(socket_fd, storage_server_info);
+        if (command->type == write_cmd)
+        {
+            printf("%s\n for backup", command->data);
+            backup_things(storage_server_index, message);
+        }
     }
     else if (command->type == ls_cmd)
     {
-        printf("Entered ls command\n");
         // char *ip_address =
         // send message as all files in the storage server seperated with /n you can get it from mappings
-        char* ls_message = (char*)malloc(sizeof(char) * 1024*20);
+        char *ls_message = (char *)malloc(sizeof(char) * 1024 * 20);
         strcpy(ls_message, "");
-        for (int i = 0; i < fs->storage_servers[storage_server_index].num_of_files; i++)
+        // print all files in file_mappings
+        for (int i = 0; i < 10; i++)
         {
             strcat(ls_message, fs->file_mappings[i].file_name);
-            strcat(ls_message, "\n");
+            printf("file name: %s\n", fs->file_mappings[i].file_name);
         }
-        char *storage_server_info = format_response("200 OK", ls_message);
-        send_message(socket_fd, storage_server_info);
+        char *ls_response = format_response("200 OK", ls_message);
+        send_message(socket_fd, ls_response);
     }
     else if (command->type == cp_cmd)
     {
@@ -240,22 +344,8 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
     }
     else if (command->type == rmdir_cmd || command->type == rm_cmd)
     {
-        // int storage_server_socket = fs->server_sockets[storage_server_index];
-        // if (storage_server_socket < 0)
-        // {
-        //     printf("Invalid storage server socket.\n");
-        //     return;
-        // }
-        // // Send the ;message to the found storage server
-        // printf("Sending message to storage server: %s\n", message);
-        // printf("storage_server_socket: %d\n", storage_server_socket);
-        // // NOTE that you need to add ss_add_message before sending
-        // if (send(storage_server_socket, message, strlen(message), 0) < 0)
-        // {
-        //     perror("Failed to send message to storage server");
-        // }
         char *ip_address = "127.0.0.1";
-        int storage_server_socket = get_socket(ip_address, fs->storage_servers[storage_server_index].port_of_ss);
+        int storage_server_socket = get_socket2(ip_address, fs->storage_servers[storage_server_index].port_of_ss, storage_server_index);
 
         char *ss_added_message = add_ss_to_message(storage_server_index, -1, message);
         send_message(&storage_server_socket, ss_added_message);
@@ -283,7 +373,20 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
             }
         }
         close(storage_server_socket);
+        backup_things(storage_server_index, message);
     }
+    // else if(command->type == stat_cmd)
+    // {
+    //     printf("Entered stat command\n");
+    //     char* ip_address =  "127.0.0.1";
+    //     int storage_server_socket = get_socket2(ip_address, fs->storage_servers[storage_server_index].port_of_ss);
+    //     char* ss_added_message = add_ss_to_message(storage_server_index, -1, message);
+    //     send_message(&storage_server_socket, ss_added_message);
+    //     struct recv_msg_t msg = recv_message_server(&storage_server_socket);
+    //     send_message(socket_fd, msg.message);
+    //     close(storage_server_socket);
+
+    // }
 }
 
 void *client_thread(void *client_sock)
@@ -298,7 +401,6 @@ void *client_thread(void *client_sock)
     msg.quit = 0;
     while (1)
     {
-        printf("Created message struct\n");
         msg = recv_message_server(new_sockfd);
         printf("Received message from client: %s\n", msg.message);
         if (msg.quit)

@@ -82,25 +82,24 @@ struct recv_msg_t recv_message_client(int sock_fd)
         {
             printf("Received %ld bytes\n", size);
             // print temp buff
-            printf("temp_buff: %s\n", temp_buff);
             // New data. Copy into message string.
             char *new_message = (char *)realloc(msg.message, current_length + size + 1);
             if (new_message == NULL)
             {
-                printf("This an error\n");
+             
                 perror("Memory allocation error\n");
                 free(msg.message);
                 msg.message = NULL;
                 msg.quit = 1;
                 return msg;
             }
-            printf("Equating\n");
+       
             msg.message = new_message;
-            printf("Going to copy\n");
+      
             memcpy(msg.message + current_length, temp_buff, size);
             current_length += size;
             msg.message[current_length] = '\0'; // Null-terminate
-            printf("msg.message: %s\n", msg.message);
+        
             // Check if we've received the full message
 
             // Start by identifying the length of the message body
@@ -172,12 +171,10 @@ struct recv_msg_t recv_message_server(int* sock_fd) {
 
     char temp_buff[65535];
     ssize_t size;
-    printf("Entering while loop\n");
     while (1) {
         printf("recv_message_server while\n");
         size = recv(*sock_fd, temp_buff, sizeof(temp_buff), 0);
         printf("size: %ld\n", size);
-        printf("temp_buff_server: %s\n", temp_buff);
         if (size > 0) {
             char *new_message = realloc(msg.message, current_length + size + 1);
             if (new_message == NULL) {
@@ -195,7 +192,6 @@ struct recv_msg_t recv_message_server(int* sock_fd) {
 
             // Check for end of message
             if (strstr(msg.message, "\r\n") != NULL) {
-                printf("Enter avvaku munda\n");
                 break;
             }
         } else if (size == 0) {
@@ -218,6 +214,35 @@ struct recv_msg_t recv_message_server(int* sock_fd) {
     return msg;
 }
 
+int check_connection(char *ip, int port_num)
+{
+    int storage_server_socket = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
+    if (storage_server_socket < 0)
+    {
+        perror("Error: Failed to create socket");
+        exit(1);
+    }
+
+    struct sockaddr_in storage_server_addr;
+    char *ip_address = "127.0.0.1";
+
+    // Initialize storage_server_addr with zeros
+    memset(&storage_server_addr, 0, sizeof(storage_server_addr));
+
+    storage_server_addr.sin_family = AF_INET;
+    storage_server_addr.sin_port = htons(port_num);
+
+    // Convert IP address string to binary form
+    if (inet_pton(AF_INET, ip_address, &storage_server_addr.sin_addr) <= 0)
+    {
+        return -1;
+    }
+    if (connect(storage_server_socket, (struct sockaddr *)&storage_server_addr, sizeof(storage_server_addr)) < 0)
+    {
+        return -1;
+    }
+    return storage_server_socket;
+}
 int get_socket(char *ip, int port_num)
 {
     int storage_server_socket = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
@@ -252,7 +277,6 @@ int get_socket(char *ip, int port_num)
 
 struct Command parse_command(const char *message)
 {
-    printf("parse_command in thaggede le\n");
     struct Command cmd;
     cmd.file[0] = '\0';
     cmd.data[0] = '\0';
@@ -310,7 +334,6 @@ struct Command parse_command(const char *message)
     }
     else if (strcmp(name, "cat") == 0)
     {
-        printf("cat command\n");
         cmd.type = cat_cmd;
     }
     else if (strcmp(name, "cp") == 0)
@@ -423,7 +446,6 @@ char *add_ss_to_message(int id1, int id2, const char *message)
             strncat(new_message, "/", MAX_LENGTH - strlen(new_message) - 1);
             // strncat(new_message, " ", MAX_LENGTH - strlen(new_message) - 1);
             strncat(new_message, tokens[2], MAX_LENGTH - strlen(new_message) - 1);
-            printf("new_message: %s\n", new_message);
         }
         else
         {

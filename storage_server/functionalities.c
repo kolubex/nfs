@@ -18,7 +18,6 @@ void response_ok(char *message, int *fs_sock)
 {
     // Send the data (response) thought the socket.
     char *formatted_message = format_response("200 OK", message);
-    printf("formatted_message: %s\n", formatted_message);
     send_message(fs_sock, formatted_message);
 }
 
@@ -39,7 +38,6 @@ void fs_create(int *socket_fd, const char *file_name)
 
 void fs_cat(int *socket_fd, const char *file_name)
 {
-    printf("fs_cat\n");
     FILE *file = fopen(file_name, "r"); // Open the file for reading
     if (file == NULL)
     {
@@ -92,7 +90,6 @@ void fs_cat(int *socket_fd, const char *file_name)
 
 
 void fs_mkdir(int *socket_fd, const char *dir_name) {
-    printf("fs_mkdir\n");
 
     char *dir_copy = strdup(dir_name); // Create a copy to avoid modifying the original string
     char *token = strtok(dir_copy, "/");
@@ -138,7 +135,6 @@ void fs_mkdir(int *socket_fd, const char *dir_name) {
 
 void fs_write(int *socket_fd, const char *file_name, const char *data)
 {
-    printf("fs_write\n");
     FILE *file = fopen(file_name, "w"); // Open the file for writing
     if (file == NULL)
     {
@@ -184,7 +180,6 @@ void create_parent_directories(const char *file_name) {
 
 
 void fs_mkfile(int *socket_fd, const char *file_name) {
-    printf("fs_mkfile\n");
 
     create_parent_directories(file_name);
 
@@ -204,7 +199,6 @@ void fs_mkfile(int *socket_fd, const char *file_name) {
 
 void fs_rm(int *socket_fd, const char *file_name)
 {
-    printf("fs_rm\n");
     int status = remove(file_name);
     if (status < 0)
     {
@@ -260,4 +254,36 @@ void fs_rmdir(int *socket_fd, const char *path) {
         snprintf(success_message, sizeof(success_message), "Directory removed successfully: %.67s", path);
         response_ok(success_message, socket_fd);
     }
+}
+
+void fs_stat(int *socket_fd, const char *file_name) {
+    // print filesize and permissions
+    char a[1024 * 2];
+    struct stat fileStat;
+    if (stat(file_name, &fileStat) < 0) {
+        char *error_message = "Error: Unable to stat file";
+        send_message(socket_fd, error_message);
+        return;
+    }
+
+    strcpy(a, "File Size: \t\t");
+    char size_str[64];
+    snprintf(size_str, sizeof(size_str), "%ld bytes\n", fileStat.st_size);
+    strcat(a, size_str);
+
+    strcat(a, "Mode: \t\t\t");
+    strcat(a, (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
+    strcat(a, (fileStat.st_mode & S_IRUSR) ? "r" : "-");
+    strcat(a, (fileStat.st_mode & S_IWUSR) ? "w" : "-");
+    strcat(a, (fileStat.st_mode & S_IXUSR) ? "x" : "-");
+    strcat(a, (fileStat.st_mode & S_IRGRP) ? "r" : "-");
+    strcat(a, (fileStat.st_mode & S_IWGRP) ? "w" : "-");
+    strcat(a, (fileStat.st_mode & S_IXGRP) ? "x" : "-");
+    strcat(a, (fileStat.st_mode & S_IROTH) ? "r" : "-");
+    strcat(a, (fileStat.st_mode & S_IWOTH) ? "w" : "-");
+    strcat(a, (fileStat.st_mode & S_IXOTH) ? "x" : "-");
+    
+    strcat(a, "\n");
+
+    response_ok(a, socket_fd);
 }

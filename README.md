@@ -1,3 +1,4 @@
+
 # Network File System
 
 The NFS project comprises three fundamental components: Clients, the Naming Server, and Storage Servers. Clients serve as the primary interface, enabling file operations such as reading, writing, deletion, and more within the NFS. The Naming Server acts as the pivotal intermediary, orchestrating communication between clients and storage servers by providing crucial file location details. Storage Servers form the backbone, responsible for securely storing and retrieving files across the network. 
@@ -32,7 +33,7 @@ The NFS project comprises three fundamental components: Clients, the Naming Serv
 3. `stat <file_name>`
 4. `rm <file_name>`
 5. `rmdir <folder_name>`
-6. `copy <file_name> <new_file_name>`
+6. `cp <file_name> <new_file_name>`
 7. `ls`
 
 ## Assumptions
@@ -43,5 +44,13 @@ The NFS project comprises three fundamental components: Clients, the Naming Serv
 4. In detail logging was done in the all the three channels on the terminal, because there was no mention of a file for logging.
 5. On doing `mkfile` on a folder which does not exist, the folder is created and the file is created inside it.
 6. On doing `mkdir` on a folder which does not exist, the folder is created.
-6. The STOP packet which we understood was the usage of `\r\n` in the end of the command.
+7. The STOP packet which we understood was the usage of `\r\n` in the end of the command.
+8. We are NOT initializing the storage servers with any files, but we add to the storage servers initially based on least storage.
+9. But how do we test multiple storage servers - For that we initialised three storage servers randomly to check the functionality.
+10. Handling Multiple Clients - We have used threads to handle multiple clients.
+11. An LRU search is done first and then a Tries search is implemented.
+12. The `ls` command is implemented to list all the files and folders in all the storage servers.
+13. The `cp` command is implemented to copy a file from one place to other place.
+14. The `rm` command is implemented to remove a file from the storage server.
+15. There is an immediate duplication of files in the storage servers after write.
 

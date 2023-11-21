@@ -68,7 +68,7 @@ void *handle_client(void *client_sock)
         msg = recv_message_server(new_sock);
         if (msg.quit)
         {
-            printf("quitting aosdjfnasekrjwe\n");
+            printf("quitting\n");
             break;
         }
         struct Command command = parse_command(msg.message);
@@ -196,11 +196,9 @@ void exec_command(int *socket_fd, struct Command command)
     switch (command.type)
     {
     case mkdir_cmd:
-        printf("command.file: %s\n", command.file);
         fs_mkdir(socket_fd, command.file);
         break;
     case mkfile_cmd:
-        printf("command.file: %s\n", command.file);
         fs_mkfile(socket_fd, command.file);
         break;
     case ls_cmd:
@@ -219,23 +217,19 @@ void exec_command(int *socket_fd, struct Command command)
         fs_create(socket_fd, command.file);
         break;
     case write_cmd:
-        printf("Just before going to write func command.file: %s\n", command.file);
-        printf("Just before going to write func command.data: %s\n", command.data);
         fs_write(socket_fd, command.file, command.data);
         // fs_append(command.file, command.data);
         break;
     case stat_cmd:
-        // fs_stat(command.file);
+        fs_stat(socket_fd, command.file);
         break;
     case cat_cmd:
-        printf("command.file: %s\n", command.file);
         fs_cat(socket_fd, command.file);
         break;
     case cp_cmd:
         // fs_head(command.file, atoi(command.data));
         break;
     case rm_cmd:
-        printf("Just before removing func command.file: %s\n", command.file);
         fs_rm(socket_fd, command.file);
         break;
     case quit_cmd:
