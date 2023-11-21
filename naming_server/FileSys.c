@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include "../common/structures.h"
 #include "../common/helper.h"
+#include <sys/stat.h>
 
 // Forward declare functions
 // void validate_before_new_entry(char* dir, char* name);
@@ -46,6 +47,10 @@ void init_storage_servers(struct storage_server servers[3]) {
         servers[i].num_of_files = 0;
         servers[i].num_of_dirs = 0;
         servers[i].id = i;
+        // create a folder for each storage server with name ss_<id>
+        char dir[10];
+        snprintf(dir, sizeof(dir), "ss_%d", i);
+        mkdir(dir, 0777);
     }
 }
 

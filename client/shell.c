@@ -26,8 +26,13 @@ void parse_response_to_get_ss(char *response, char *formatted_message)
     // you have to send the send the same formatted message to the socket created with given info
     // print response
     printf("Received message: %s\n", response);
+    // response is  - 127.0.0.1 50000 0
     char *ss_ip = strtok(response, " ");
     char *ss_port = strtok(NULL, " ");
+    char *ss_id = strtok(NULL, " ");
+    // convert id to int if 0 then integer is 0, if 1 then integer is 1
+    int ssid = atoi(ss_id);
+    int port_num = atoi(ss_port);
     ss_ip = "localhost";
     // ss_port = "50000";
     if (ss_ip == NULL || ss_port == NULL)
@@ -35,43 +40,10 @@ void parse_response_to_get_ss(char *response, char *formatted_message)
         printf("Error: Invalid response from server\n");
         return;
     }
-    // make a socket with given ip and port and send formatted message
-    struct addrinfo hints, *res;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    int ret;
-    printf("Getting address info\n");
-    printf("ss_ip: %s, ss_port: %s\n", ss_ip, ss_port);
-    ret = getaddrinfo(ss_ip, ss_port, &hints, &res);
-    if (ret != 0)
-    {
-        fprintf(stderr, "Error: Could not obtain address information for \"%s:%s\"\n", ss_ip, ss_port);
-        fprintf(stderr, "\tgetaddrinfo returned with %d\n", ret);
-        return;
-    }
-    // make ss_ip as localhost
-    printf("Connecting to %s:%s\n", ss_ip, ss_port);
-    int ss_sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (ss_sock < 0)
-    {
-        fprintf(stderr, "Error: Failed to create a socket\n");
-        fprintf(stderr, "\tsocket returned with %d\n", ss_sock);
-        freeaddrinfo(res);
-        return;
-    }
-    if (connect(ss_sock, res->ai_addr, res->ai_addrlen) < 0)
-    {
-        fprintf(stderr, "Error: Failed to connect with server (%s:%s).\n", ss_ip, ss_port);
-        fprintf(stderr, "\tDouble check that the server is running.\n");
-        close(ss_sock);
-        freeaddrinfo(res);
-        return;
-    }
-    freeaddrinfo(res);
+    int ss_sock = get_socket(ss_ip, port_num);
     printf("Sending message in ss: %s", formatted_message);
-    send_message(&ss_sock, formatted_message);
+    char* ss_added_message = add_ss_to_message(ssid, formatted_message);
+    send_message(&ss_sock, ss_added_message);
     printf("Waiting for response\n");
     struct recv_msg_t msg = recv_message_client(ss_sock);
     if (msg.quit)
@@ -398,12 +370,11 @@ int execute_command(struct Shell *shell, char *command_str)
         printf("Found mkdir\n");
         mkdir_rpc(shell, command.file_name);
     }
-    else if(strcmp(command.name, "mkfile") == 0)
+    else if (strcmp(command.name, "mkfile") == 0)
     {
         printf("Found mkfile hello\n");
         mkfile_rpc(shell, command.file_name);
     }
-
 
     else if (strcmp(command.name, "cd") == 0)
     {
