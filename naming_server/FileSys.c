@@ -102,12 +102,12 @@ void fs_mount(struct nfs_network* network)
     printf("Calling init_storage servers\n");
     struct storage_server storage_servers[3];
     init_storage_servers(storage_servers);
-    storage_servers[0].files[0] = "file1";
+    // storage_servers[0].files[0] = "file1";
     // struct nfs_network network;
     memcpy(network->storage_servers, storage_servers, sizeof(storage_servers));
     printf("Calling create_server_sockets\n");
     // create_server_sockets(network);
-    strncpy(network->file_mappings[0].file_name, "file1", MAX_FILENAME_LENGTH - 1);
+    // strncpy(network->file_mappings[0].file_name, "file1", MAX_FILENAME_LENGTH - 1);
     network->file_mappings[0].file_name[MAX_FILENAME_LENGTH - 1] = '\0'; // Ensure null-termination
 
     network->file_mappings[0].storage_server_index = 0;

@@ -36,7 +36,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
 
         for (int i = 0; i < MAX_FILES; i++)
         {
-            // printf("Comparing file name: %s\n", fs->file_mappings[i].file_name);
+            printf("Comparing file name: %s\n", fs->file_mappings[i].file_name);
             if (strcmp(fs->file_mappings[i].file_name, command->file) == 0)
             {
                 storage_server_index = fs->file_mappings[i].storage_server_index;
@@ -87,6 +87,21 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         printf("Sent message from the SS to the NS");
         // receive the message from the storage server
         struct recv_msg_t msg = recv_message_server(&storage_server_socket);
+        printf("Received message from the storage server: %s\n", msg.message);
+        // get the first three characters of msg.message 
+        char code[3];
+        for(int i = 0; i < 3; i++)
+        {
+            code[i] = msg.message[i];
+        }
+        if(strcmp(code, "200") == 0)
+        {
+            // add to the file mappings and num files
+            printf("Adding to the file mappings\n");
+            fs->file_mappings[fs->storage_servers->num_of_files].storage_server_index = ssid;
+            strcpy(fs->file_mappings[fs->storage_servers->num_of_files].file_name, command->file);
+            fs->storage_servers->num_of_files++;
+        }
         send_message(socket_fd, msg.message);
         close(storage_server_socket);
         // backup servers also send message
@@ -113,7 +128,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         char *storage_server_info = format_response("200 OK", message);
         send_message(socket_fd, storage_server_info);
     }
-    else // this is for commands like rm, rmdir
+    else if(command->type == rmdir_cmd || command->type == rm_cmd)
     {
         int storage_server_socket = fs->server_sockets[storage_server_index];
         if (storage_server_socket < 0)
@@ -121,7 +136,7 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
             printf("Invalid storage server socket.\n");
             return;
         }
-        // Send the message to the found storage server
+        // Send the ;message to the found storage server
         printf("Sending message to storage server: %s\n", message);
         printf("storage_server_socket: %d\n", storage_server_socket);
         // NOTE that you need to add ss_add_message before sending 

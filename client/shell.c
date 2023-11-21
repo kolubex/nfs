@@ -292,13 +292,6 @@ void run(struct Shell *shell, char *port)
     int user_quit = 0;
     while (!user_quit)
     {
-        mountNFS(shell, port);
-        if (!shell->is_mounted)
-        {
-            printf("File system is not mounted. Exiting.\n");
-            return;
-        }
-
         // Print prompt and get command line
         char command_str[MAX_COMMAND_LENGTH];
         // put blue color and then white after
@@ -314,7 +307,12 @@ void run(struct Shell *shell, char *port)
 
         // Remove newline character from the end of the input
         command_str[strcspn(command_str, "\n")] = '\0';
-
+        mountNFS(shell, port);
+        if (!shell->is_mounted)
+        {
+            printf("File system is not mounted. Exiting.\n");
+            return;
+        }
         // Execute the command
         user_quit = execute_command(shell, command_str);
         // Unmount the file system
