@@ -265,11 +265,11 @@ void cat_rpc(struct Shell *shell, char *fname)
     network_command(shell, cmd, 1, 1);
 }
 
-void head_rpc(struct Shell *shell, char *fname, int n)
+void cp_rpc(struct Shell *shell, char *fname, char* n)
 {
-    char cmd[MAX_NAME_LENGTH + 15]; // command + "head " + endline
-    snprintf(cmd, sizeof(cmd), "head %s %d%s", fname, n, endline);
-    network_command(shell, cmd, 1, 1);
+    // char cmd[MAX_NAME_LENGTH + 15]; // command + "head " + endline
+    // snprintf(cmd, sizeof(cmd), "head %s %d%s", fname, n, endline);
+    // network_command(shell, cmd, 1, 1);
 }
 
 void rm_rpc(struct Shell *shell, char *fname)
@@ -402,19 +402,9 @@ int execute_command(struct Shell *shell, char *command_str)
     {
         cat_rpc(shell, command.file_name);
     }
-    else if (strcmp(command.name, "head") == 0)
+    else if (strcmp(command.name, "cp") == 0)
     {
-        errno = 0;
-        unsigned long n = strtoul(command.write_data, NULL, 0);
-        if (errno == 0)
-        {
-            head_rpc(shell, command.file_name, n);
-        }
-        else
-        {
-            fprintf(stderr, "Invalid command line: %s is not a valid number of bytes\n", command.write_data);
-            return 0;
-        }
+        cp_rpc(shell, command.file_name, command.write_data);
     }
     else if (strcmp(command.name, "rm") == 0)
     {
@@ -457,6 +447,7 @@ void network_command(struct Shell *shell, const char *message, int can_be_empty,
     }
 
     char *response = msg.message;
+    printf("Received message: %s\n", response);
 
     // Parse response (remove the protocol header)
     // The code, length, and body are separated by "\r\n"

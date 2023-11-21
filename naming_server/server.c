@@ -26,7 +26,6 @@ extern void fs_mount(struct nfs_network *fs);
 
 // Command type enumeration
 
-
 void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, struct Command *command, char *message)
 {
     // Iterate over the file mappings to find the storage server for the given file
@@ -74,27 +73,27 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         uint32_t ssid_port_number = fs->storage_servers[ssid].port_of_ss;
         uint32_t ssid_ip_address = fs->storage_servers[ssid].ip_of_ss;
 
-        char* ip_address = "127.0.0.1";
+        char *ip_address = "127.0.0.1";
         printf("ssid_port_number to which NS is connecting: %d\n", ssid_port_number);
         printf("ssid_ip_address to which NS is connecting: %d\n", ssid_ip_address);
 
         // create a socket and connect the client with the storage server
         int storage_server_socket = get_socket(ip_address, ssid_port_number);
-        // print message 
+        // print message
         printf("Sending %s to the storage server\n", message);
-        char* ss_added_message = add_ss_to_message(ssid, message);
+        char *ss_added_message = add_ss_to_message(ssid, message);
         send_message(&storage_server_socket, ss_added_message);
         printf("Sent message from the SS to the NS");
         // receive the message from the storage server
         struct recv_msg_t msg = recv_message_server(&storage_server_socket);
         printf("Received message from the storage server: %s\n", msg.message);
-        // get the first three characters of msg.message 
+        // get the first three characters of msg.message
         char code[3];
-        for(int i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++)
         {
             code[i] = msg.message[i];
         }
-        if(strcmp(code, "200") == 0)
+        if (strcmp(code, "200") == 0)
         {
             // add to the file mappings and num files
             printf("Adding to the file mappings\n");
@@ -106,7 +105,6 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         close(storage_server_socket);
         // backup servers also send message
     }
-
 
     if (command->type == cat_cmd || command->type == write_cmd || command->type == stat_cmd)
     {
@@ -128,22 +126,49 @@ void search_and_send_to_storage_server(int *socket_fd, struct nfs_network *fs, s
         char *storage_server_info = format_response("200 OK", message);
         send_message(socket_fd, storage_server_info);
     }
-    else if(command->type == rmdir_cmd || command->type == rm_cmd)
+    else if (command->type == rmdir_cmd || command->type == rm_cmd)
     {
-        int storage_server_socket = fs->server_sockets[storage_server_index];
-        if (storage_server_socket < 0)
+        // int storage_server_socket = fs->server_sockets[storage_server_index];
+        // if (storage_server_socket < 0)
+        // {
+        //     printf("Invalid storage server socket.\n");
+        //     return;
+        // }
+        // // Send the ;message to the found storage server
+        // printf("Sending message to storage server: %s\n", message);
+        // printf("storage_server_socket: %d\n", storage_server_socket);
+        // // NOTE that you need to add ss_add_message before sending
+        // if (send(storage_server_socket, message, strlen(message), 0) < 0)
+        // {
+        //     perror("Failed to send message to storage server");
+        // }
+        char *ip_address = "127.0.0.1";
+        int storage_server_socket = get_socket(ip_address, fs->storage_servers[storage_server_index].port_of_ss);
+
+        char *ss_added_message = add_ss_to_message(storage_server_index, message);
+        send_message(&storage_server_socket, ss_added_message);
+        struct recv_msg_t msg = recv_message_server(&storage_server_socket);
+        send_message(socket_fd, msg.message);
+
+        char code[3];
+        for (int i = 0; i < 3; i++)
         {
-            printf("Invalid storage server socket.\n");
-            return;
+            code[i] = msg.message[i];
         }
-        // Send the ;message to the found storage server
-        printf("Sending message to storage server: %s\n", message);
-        printf("storage_server_socket: %d\n", storage_server_socket);
-        // NOTE that you need to add ss_add_message before sending 
-        if (send(storage_server_socket, message, strlen(message), 0) < 0)
+        if (strcmp(code, "200") == 0)
         {
-            perror("Failed to send message to storage server");
+            for (int i = 0; i < MAX_FILES; i++)
+            {
+                if (strcmp(fs->file_mappings[i].file_name, command->file) == 0)
+                {
+                    strcpy(fs->file_mappings[i].file_name, "");
+                    fs->file_mappings[i].storage_server_index = -1;
+                    fs->storage_servers[storage_server_index].num_of_files--;
+                    break;
+                }
+            }
         }
+        close(storage_server_socket);
     }
 }
 

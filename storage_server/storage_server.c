@@ -15,7 +15,7 @@
 // Forward declarations of the functions
 struct sockaddr_in get_server_addr(in_port_t port);
 struct Command parse_command(const char *message);
-void exec_command(int* sock_fd, struct Command command);
+void exec_command(int *sock_fd, struct Command command);
 // void response_error(const char *message);
 char *format_response(const char *code, const char *message);
 void send_message(int *sock_fd, char *message);
@@ -26,8 +26,6 @@ struct recv_msg_t recv_message_server(int *sock_fd);
 // extern void fs_unmount(fs);
 
 // Command type enumeration
-
-
 
 void init_storage_server(struct storage_server *server, int port, int ss_id)
 {
@@ -56,7 +54,7 @@ void init_storage_server(struct storage_server *server, int port, int ss_id)
     server->files[0] = "file1";
 }
 
-void* handle_client(void* client_sock)
+void *handle_client(void *client_sock)
 {
     int *new_sock = (int *)client_sock;
     if (new_sock < 0)
@@ -97,7 +95,6 @@ void* handle_client(void* client_sock)
         msg.quit = 0;
     }
     close(*new_sock);
-    
 }
 int main(int argc, char *argv[])
 {
@@ -206,7 +203,7 @@ void exec_command(int *socket_fd, struct Command command)
     case mkfile_cmd:
         printf("command.file: %s\n", command.file);
         fs_mkfile(socket_fd, command.file);
-        break;  
+        break;
     case ls_cmd:
         // fs_ls();
         break;
@@ -217,7 +214,7 @@ void exec_command(int *socket_fd, struct Command command)
         // fs_home();
         break;
     case rmdir_cmd:
-        // fs_rmdir(command.file);
+        fs_rmdir(socket_fd, command.file);
         break;
     case create_cmd:
         fs_create(socket_fd, command.file);
@@ -239,7 +236,8 @@ void exec_command(int *socket_fd, struct Command command)
         // fs_head(command.file, atoi(command.data));
         break;
     case rm_cmd:
-        // fs_rm(command.file);
+        printf("Just before removing func command.file: %s\n", command.file);
+        fs_rm(socket_fd, command.file);
         break;
     case quit_cmd:
         // TODO: Call command type doesn't exist error which should be defined in Wrapped_NFS.h
@@ -252,4 +250,3 @@ void exec_command(int *socket_fd, struct Command command)
 }
 
 // Assuming enum CommandType and struct Command are already defined
-

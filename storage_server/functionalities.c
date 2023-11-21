@@ -8,7 +8,9 @@
 #include "../common/helper.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
+#define PATH_MAX 4096
 char *format_response(const char *code, const char *message);
 
 void send_message(int *sock_fd, char *message);
@@ -121,4 +123,64 @@ void fs_write(int *socket_fd, const char *file_name, const char *data)
 
     char *success_message = "Data written successfully";
     response_ok(success_message, socket_fd);
+}
+
+void fs_rm(int *socket_fd, const char *file_name)
+{
+    printf("fs_rm\n");
+    int status = remove(file_name);
+    if (status < 0)
+    {
+        char *error_message = "Error: Unable to remove file";
+        send_message(socket_fd, error_message);
+        return;
+    }
+
+    char *success_message = "File removed successfully";
+    response_ok(success_message, socket_fd);
+}
+
+void fs_rmdir(int *socket_fd, const char *path) {
+    struct dirent *entry;
+    DIR *dir = opendir(path);
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            char full_path[PATH_MAX];
+            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+
+            struct stat statbuf;
+            if (stat(full_path, &statbuf) != 0) {
+                perror("Error getting status");
+                continue;
+            }
+
+            if (S_ISDIR(statbuf.st_mode)) {
+                fs_rmdir(socket_fd, full_path);
+            } else {
+                if (remove(full_path) != 0) {
+                    char error_message[100];
+                    snprintf(error_message, sizeof(error_message), "Error removing file: %.70s", full_path);
+                    send_message(socket_fd, error_message);
+                }
+            }
+        }
+    }
+
+    closedir(dir);
+
+    if (rmdir(path) != 0) {
+        char error_message[100];
+        snprintf(error_message, sizeof(error_message), "Error removing directory: %.70s", path);
+        send_message(socket_fd, error_message);
+    } else {
+        char success_message[100];
+        snprintf(success_message, sizeof(success_message), "Directory removed successfully: %.67s", path);
+        response_ok(success_message, socket_fd);
+    }
 }
